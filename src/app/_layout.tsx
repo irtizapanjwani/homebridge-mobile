@@ -10,6 +10,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
 
@@ -33,13 +34,33 @@ export default function RootLayout() {
   if (!loaded && !error) return null;
 
   return (
-    <>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="register" />
-        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-      </Stack>
-    </>
+    <View style={styles.page}>
+      <View style={styles.phone}>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="register" />
+          <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        </Stack>
+      </View>
+    </View>
   );
 }
+
+// On phones this is full screen. In a desktop browser (the Vercel preview) the app
+// is shown as a phone-width column in the middle instead of stretching across the screen.
+const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    backgroundColor: Platform.OS === 'web' ? '#E4DECB' : colors.paper,
+  },
+  phone: {
+    flex: 1,
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 430 : undefined,
+    alignSelf: 'center',
+    overflow: 'hidden',
+    backgroundColor: colors.paper,
+    ...(Platform.OS === 'web' ? { boxShadow: '0 0 40px rgba(23,69,47,0.18)' } : null),
+  },
+});
