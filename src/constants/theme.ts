@@ -1,65 +1,40 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
- */
+// HomeBridge brand tokens, taken from the client's "HomeBridge Member App 2A" design.
 
-import '@/global.css';
-
-import { Platform } from 'react-native';
-
-export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+export const colors = {
+  green: '#17452F', // primary brand green
+  greenDark: '#0F3322',
+  greenMid: '#1F5A3D',
+  greenPhoto: '#2C5E45',
+  gold: '#C9A227',
+  goldText: '#6B5510',
+  goldLight: '#F2D97A',
+  cream: '#F7F0DA',
+  creamBorder: '#E6D9A6',
+  paper: '#FBF8EF', // app background
+  white: '#FFFFFF',
+  ink: '#1A1D1A', // main text
+  inkSoft: '#3E4A43',
+  muted: '#5E6862',
+  mint: '#E8F0EA',
+  mintText: '#CFE0D4',
+  mintFaint: '#B9CDBF',
+  line: '#E3DDCA',
+  lineSoft: '#ECE6D3',
+  inputBorder: '#CFC7AE',
+  chipBorder: '#D8D1BA',
+  segment: '#EFEADB',
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+// Font family names registered in src/app/_layout.tsx.
+// React Native picks the weight from the family, so use these instead of fontWeight.
+export const fonts = {
+  regular: 'Poppins_400Regular',
+  medium: 'Poppins_500Medium',
+  semibold: 'Poppins_600SemiBold',
+  bold: 'Poppins_700Bold',
+  serifSemibold: 'Lora_600SemiBold',
+  serifBold: 'Lora_700Bold',
+  serifItalic: 'Lora_500Medium_Italic',
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const TAB_BAR_HEIGHT = 68;

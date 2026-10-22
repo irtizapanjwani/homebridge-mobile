@@ -1,98 +1,148 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link, router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { CheckBadge, Icon, type IconName } from '@/components/icon';
+import { Logo } from '@/components/logo';
+import { Button, Screen, T } from '@/components/ui';
+import { colors, fonts } from '@/constants/theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+type MemberType = 'diaspora' | 'home';
+
+const options: { key: MemberType; icon: IconName; title: string; detail: string }[] = [
+  {
+    key: 'diaspora',
+    icon: 'globe',
+    title: 'Abroad — Diaspora member',
+    detail: 'UK, Europe, Americas and beyond · pay in £ or $',
+  },
+  {
+    key: 'home',
+    icon: 'home',
+    title: 'At home — Nigeria and Africa',
+    detail: 'All 36 states + FCT · pay in ₦ by transfer, card or USSD',
+  },
+];
+
+export default function Welcome() {
+  const [type, setType] = useState<MemberType>('diaspora');
+  const diaspora = type === 'diaspora';
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <Screen background={colors.green} edges={['top', 'bottom']} contentStyle={{ gap: 26, paddingTop: 36 }}>
+      <StatusBar style="light" />
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      <View style={styles.brand}>
+        <Logo size={88} background={colors.greenDark} />
+        <T style={styles.wordmark}>
+          <T style={styles.wordmark} color={colors.cream}>
+            Home
+          </T>
+          <T style={styles.wordmark} color={colors.gold}>
+            Bridge
+          </T>
+        </T>
+        <T size={12} weight="bold" color={colors.cream} style={{ letterSpacing: 5 }}>
+          COOPERATIVE
+        </T>
+        <T style={styles.tagline}>Abroad and at home, we build together.</T>
+      </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <View style={{ gap: 12 }}>
+        <T size={18} weight="semibold" color={colors.cream}>
+          Where are you joining from?
+        </T>
+        {options.map((o) => {
+          const on = o.key === type;
+          return (
+            <Pressable
+              key={o.key}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              onPress={() => setType(o.key)}
+              style={[
+                styles.option,
+                on
+                  ? { borderColor: colors.gold, backgroundColor: colors.greenMid }
+                  : { borderColor: 'rgba(247,240,218,0.28)' },
+              ]}>
+              <Icon name={o.icon} size={30} color={colors.gold} />
+              <View style={{ flex: 1, gap: 3 }}>
+                <T size={16} weight="semibold" color={colors.cream}>
+                  {o.title}
+                </T>
+                <T size={13} color={colors.mintText}>
+                  {o.detail}
+                </T>
+              </View>
+              {on && <CheckBadge />}
+            </Pressable>
+          );
+        })}
+      </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+      <View style={styles.fees}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <T size={12} color={colors.mintText}>
+            One-off joining fee
+          </T>
+          <T size={22} weight="bold" color={colors.cream}>
+            {diaspora ? '£10' : '₦10,000'}
+          </T>
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <T size={12} color={colors.mintText}>
+            Monthly minimum (shares)
+          </T>
+          <T size={22} weight="bold" color={colors.cream}>
+            {diaspora ? '£25' : '₦5,000'}
+          </T>
+        </View>
+      </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      <View style={{ marginTop: 'auto', gap: 6 }}>
+        <Button
+          label="Become a member"
+          variant="gold"
+          onPress={() => router.push({ pathname: '/register', params: { type } })}
+        />
+        <Link href="/home" replace asChild>
+          <Pressable style={styles.signIn}>
+            <T size={14} color={colors.cream} style={{ textDecorationLine: 'underline' }}>
+              Already a member? Sign in
+            </T>
+          </Pressable>
+        </Link>
+        <T size={11} color={colors.mintFaint} style={{ textAlign: 'center' }}>
+          Member-owned · one member, one vote · managed by VEKAT Nigeria Ltd
+        </T>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  brand: { alignItems: 'center', gap: 12 },
+  wordmark: { fontFamily: fonts.serifBold, fontSize: 38, lineHeight: 44 },
+  tagline: { fontFamily: fonts.serifItalic, fontSize: 15, color: colors.mint, textAlign: 'center' },
+  option: {
+    minHeight: 84,
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+    gap: 14,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 2,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  fees: {
+    backgroundColor: 'rgba(247,240,218,0.08)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    gap: 8,
   },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  signIn: { height: 44, alignItems: 'center', justifyContent: 'center' },
 });
