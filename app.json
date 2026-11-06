@@ -32,6 +32,13 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "HomeBridge needs your photos so you can add your ID and proof of address.",
+          "cameraPermission": "HomeBridge uses the camera so you can take a photo of your ID and proof of address."
+        }
       ]
     ],
     "experiments": {

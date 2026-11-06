@@ -13,7 +13,14 @@ export default function VerifyId() {
   const chosen = options.find((o) => o.value === draft.idType);
 
   const numberOk = !chosen?.needsNumber || draft.idNumber.replace(/\D/g, '').length === 11;
-  const canContinue = !!chosen && numberOk && draft.idPhoto && draft.addressProof;
+  // Tell the member exactly what is still missing, so a grey button is never a mystery.
+  const missing = [
+    !chosen && 'choose which ID you will use',
+    chosen?.needsNumber && !numberOk && `type your 11-digit ${chosen.label} number`,
+    !draft.idPhoto && 'add a photo of your ID',
+    !draft.addressProof && 'add your proof of address',
+  ].filter(Boolean) as string[];
+  const canContinue = missing.length === 0;
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 16 }}>
@@ -43,30 +50,30 @@ export default function VerifyId() {
       </Field>
 
       {chosen?.needsNumber && (
-        <Field label={`Your ${chosen.label} (11 digits)`}>
+        <Field label={`Your ${chosen.label} number (11 digits)`}>
           <Input
             value={draft.idNumber}
             onChangeText={(v) => set({ idNumber: v.replace(/\D/g, '').slice(0, 11) })}
-            placeholder="12345678901"
+            placeholder="Type your 11 digits"
             keyboardType="number-pad"
             maxLength={11}
           />
         </Field>
       )}
 
-      {/* TODO: open the camera / photo library (expo-image-picker) and upload to the website. */}
+      {/* TODO: upload the photos to the website with the application. */}
       <View style={{ gap: 10 }}>
         <UploadBox
           label={chosen?.value === 'passport' ? 'Photo of your passport' : 'Photo of your ID'}
           hint="Take a photo or choose one · all 4 corners showing"
-          done={draft.idPhoto}
-          onPress={() => set({ idPhoto: true })}
+          uri={draft.idPhoto}
+          onChange={(uri) => set({ idPhoto: uri })}
         />
         <UploadBox
           label="Proof of address"
           hint="Utility bill, bank statement or tenancy · last 3 months"
-          done={draft.addressProof}
-          onPress={() => set({ addressProof: true })}
+          uri={draft.addressProof}
+          onChange={(uri) => set({ addressProof: uri })}
         />
       </View>
 
@@ -77,12 +84,18 @@ export default function VerifyId() {
         </T>
       </View>
 
-      <Button
-        label="Continue"
-        variant={canContinue ? 'primary' : 'disabled'}
-        style={{ marginTop: 'auto' }}
-        onPress={() => router.push('/register/joining-fee')}
-      />
+      <View style={{ marginTop: 'auto', gap: 8 }}>
+        {!canContinue && (
+          <T size={12} color={colors.goldText} style={{ textAlign: 'center' }}>
+            To continue, please {missing.join(', ')}.
+          </T>
+        )}
+        <Button
+          label="Continue"
+          variant={canContinue ? 'primary' : 'disabled'}
+          onPress={() => router.push('/register/joining-fee')}
+        />
+      </View>
     </Screen>
   );
 }

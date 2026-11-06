@@ -1,5 +1,6 @@
+import * as ImagePicker from 'expo-image-picker';
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
 import { BackButton, T } from '@/components/ui';
@@ -33,8 +34,8 @@ export type Draft = {
   // Step 2
   idType: string;
   idNumber: string;
-  idPhoto: boolean;
-  addressProof: boolean;
+  idPhoto: string | null; // local photo uri
+  addressProof: string | null;
   // Step 3
   payMethod: 'card' | 'bank' | '';
   datePaid: string;
@@ -55,8 +56,8 @@ const empty = (home: boolean): Draft => ({
   agreed: false,
   idType: '',
   idNumber: '',
-  idPhoto: false,
-  addressProof: false,
+  idPhoto: null,
+  addressProof: null,
   payMethod: '',
   datePaid: '',
   payReference: '',
@@ -132,25 +133,85 @@ export function ChoiceCard({ selected, title, sub, icon, onPress }: { selected: 
   );
 }
 
-/** Photo upload box. Demo only: tapping marks it as added. */
-export function UploadBox({ label, hint, done, onPress }: { label: string; hint: string; done: boolean; onPress: () => void }) {
+/** Open the camera or photo library and return the picked photo's uri (or null if cancelled). */
+export async function pickPhoto(source: 'camera' | 'library'): Promise<string | null> {
+  const perm =
+    source === 'camera' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) return null;
+  const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.7 };
+  const result =
+    source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+  return result.canceled ? null : (result.assets[0]?.uri ?? null);
+}
+
+/** Photo upload box: Camera / Gallery buttons, then a preview with Change and Remove. */
+export function UploadBox({ label, hint, uri, onChange }: { label: string; hint: string; uri: string | null; onChange: (uri: string | null) => void }) {
+  const [denied, setDenied] = useState(false);
+
+  const pick = async (source: 'camera' | 'library') => {
+    const picked = await pickPhoto(source);
+    if (picked) {
+      setDenied(false);
+      onChange(picked);
+    } else if (source === 'camera') {
+      // Camera not allowed or not available (e.g. on a computer): fall back to the gallery.
+      const fromLibrary = await pickPhoto('library');
+      if (fromLibrary) onChange(fromLibrary);
+      else setDenied(true);
+    }
+  };
+
+  return (
+    <View style={[styles.upload, uri && styles.uploadDone]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        {uri ? (
+          <Image source={{ uri }} style={styles.thumb} accessibilityLabel={`${label} preview`} />
+        ) : (
+          <View style={styles.choiceIcon}>
+            <Icon name="camera" size={20} color={colors.green} strokeWidth={1.8} />
+          </View>
+        )}
+        <View style={{ flex: 1, gap: 2 }}>
+          <T size={14} weight="semibold">
+            {label}
+          </T>
+          <T size={12} color={uri ? colors.green : colors.muted}>
+            {uri ? 'Photo added ✓' : hint}
+          </T>
+        </View>
+      </View>
+      {denied && (
+        <T size={12} color={colors.goldText}>
+          Please allow HomeBridge to use your camera or photos in your phone’s settings.
+        </T>
+      )}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {uri ? (
+          <>
+            <SmallButton label="Change photo" onPress={() => pick('library')} onMint />
+            <SmallButton label="Remove" onPress={() => onChange(null)} subtle />
+          </>
+        ) : (
+          <>
+            <SmallButton label="Take photo" icon="camera" onPress={() => pick('camera')} />
+            <SmallButton label="Gallery" icon="photo" onPress={() => pick('library')} />
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function SmallButton({ label, icon, onPress, subtle, onMint }: { label: string; icon?: IconName; onPress: () => void; subtle?: boolean; onMint?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={done ? `${label}, added. Tap to replace` : `Add ${label}`}
       onPress={onPress}
-      style={[styles.upload, done && styles.uploadDone]}>
-      <View style={[styles.choiceIcon, done && { backgroundColor: colors.green }]}>
-        <Icon name={done ? 'check' : 'camera'} size={20} color={done ? colors.white : colors.green} strokeWidth={2} />
-      </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <T size={14} weight="semibold">
-          {label}
-        </T>
-        <T size={12} color={colors.muted}>
-          {done ? 'Added · tap to replace' : hint}
-        </T>
-      </View>
+      style={({ pressed }) => [styles.smallBtn, onMint && { backgroundColor: colors.white }, subtle && { backgroundColor: 'transparent' }, { opacity: pressed ? 0.7 : 1 }]}>
+      {icon && <Icon name={icon} size={16} color={colors.green} strokeWidth={2} />}
+      <T size={13} weight="semibold" color={subtle ? colors.muted : colors.green} numberOfLines={1}>
+        {label}
+      </T>
     </Pressable>
   );
 }
@@ -190,8 +251,6 @@ const styles = StyleSheet.create({
   },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.green },
   upload: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
     borderWidth: 1.5,
     borderStyle: 'dashed',
@@ -201,4 +260,16 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   uploadDone: { borderStyle: 'solid', borderColor: colors.green, backgroundColor: colors.mint },
+  thumb: { width: 56, height: 56, borderRadius: 10, backgroundColor: colors.lineSoft },
+  smallBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: colors.mint,
+    paddingHorizontal: 8,
+  },
 });

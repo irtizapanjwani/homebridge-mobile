@@ -53,7 +53,12 @@ export default function Register() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [home]);
 
-  const canContinue = agreed && name.trim().length > 1 && phone.trim().length > 5;
+  const missing = [
+    name.trim().length <= 1 && 'type your full name',
+    phone.trim().length <= 5 && 'type your mobile number',
+    !agreed && 'tick the box to agree to the bye-laws',
+  ].filter(Boolean) as string[];
+  const canContinue = missing.length === 0;
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 16 }}>
@@ -153,12 +158,18 @@ export default function Register() {
         </T>
       </Pressable>
 
-      <Button
-        label="Continue"
-        variant={canContinue ? 'primary' : 'disabled'}
-        style={{ marginTop: 'auto' }}
-        onPress={() => router.push('/register/verify-id')}
-      />
+      <View style={{ marginTop: 'auto', gap: 8 }}>
+        {!canContinue && (
+          <T size={12} color={colors.goldText} style={{ textAlign: 'center' }}>
+            To continue, please {missing.join(', ')}.
+          </T>
+        )}
+        <Button
+          label="Continue"
+          variant={canContinue ? 'primary' : 'disabled'}
+          onPress={() => router.push('/register/verify-id')}
+        />
+      </View>
     </Screen>
   );
 }
