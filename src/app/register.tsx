@@ -127,7 +127,7 @@ export default function Register() {
           home
             ? 'Verify ID — NIN at home. Photo from your phone.'
             : 'Verify ID — passport or driving licence abroad; NIN at home. Photo from your phone.',
-          `Pay the ${home ? '₦10,000' : '£10'} joining fee to VEKAT Nigeria Ltd, the cooperative’s manager.`,
+          `Pay the ${home ? '₦10,000' : '£10'} joining fee to VEKAT Group Ltd, the cooperative’s manager.`,
           'Get your member ID and set up your monthly contribution.',
         ].map((text, i) => (
           <View key={i} style={{ flexDirection: 'row', gap: 8 }}>

@@ -130,3 +130,41 @@ export const statements = [
   { id: 's1', label: 'October 2026', amount: '£25.00' },
   { id: 's2', label: 'Year to date — 2026', amount: '£260.00' },
 ];
+
+// Office contact and website. The app links here for things that stay on the website (applying, nominee changes).
+export const office = {
+  email: 'info@homebridgecooperative.org',
+  website: 'https://homebridge-two.vercel.app',
+};
+
+// "My account" screen. Mirrors what the website's member portal shows.
+export const account = {
+  status: 'Approved' as 'In review' | 'Information requested' | 'Approved',
+  approvedOn: '14 Jan 2026',
+  joiningFee: {
+    amount: '£10.00',
+    paid: true,
+    paidOn: '12 Jan 2026',
+    method: 'Card · Stripe',
+    paidTo: 'VEKAT Group Ltd',
+    reference: 'JF-EDO-0123',
+  },
+  documents: [
+    { id: 'certificate', title: 'Membership certificate', detail: 'PDF · issued 14 Jan 2026', icon: 'award' as const },
+    { id: 'fee-receipt', title: 'Joining fee receipt', detail: 'PDF · £10.00 · 12 Jan 2026', icon: 'doc' as const },
+  ],
+  email: 'ada.okafor@example.com',
+  phone: '+44 7700 900123',
+  address: '12 Example Road, Apt 3\nLondon E1 0AA\nUnited Kingdom',
+  country: 'United Kingdom',
+  homeCohort: 'Edo',
+  nominee: {
+    name: 'Chidi Okafor',
+    initials: 'CO',
+    relation: 'Brother · receives 100% of shares',
+    phone: '+234 803 000 0000',
+    livesIn: 'Benin City, Edo',
+    email: 'chidi@example.com',
+    added: 'Jan 2026',
+  },
+};

@@ -107,7 +107,7 @@ export default function Welcome() {
           variant="gold"
           onPress={() => router.push({ pathname: '/register', params: { type } })}
         />
-        <Link href="/home" replace asChild>
+        <Link href="/sign-in" asChild>
           <Pressable style={styles.signIn}>
             <T size={14} color={colors.cream} style={{ textDecorationLine: 'underline' }}>
               Already a member? Sign in
@@ -115,7 +115,7 @@ export default function Welcome() {
           </Pressable>
         </Link>
         <T size={11} color={colors.mintFaint} style={{ textAlign: 'center' }}>
-          Member-owned · one member, one vote · managed by VEKAT Nigeria Ltd
+          Member-owned · one member, one vote · managed by VEKAT Group Ltd
         </T>
       </View>
     </Screen>

@@ -40,6 +40,9 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="register" />
+          <Stack.Screen name="sign-in" />
+          <Stack.Screen name="forgot-password" />
+          <Stack.Screen name="reset-password" />
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         </Stack>
       </View>

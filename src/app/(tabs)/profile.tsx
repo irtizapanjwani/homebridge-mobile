@@ -49,7 +49,11 @@ export default function Profile() {
         Profile
       </T>
 
-      <View style={styles.memberCard}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open my account"
+        onPress={() => router.push('/account')}
+        style={styles.memberCard}>
         <View style={styles.avatar}>
           <T size={20} weight="bold">
             {member.initials}
@@ -65,8 +69,12 @@ export default function Profile() {
           <T size={12} color={colors.mintText}>
             Member since {member.since} · ID verified
           </T>
+          <T size={12} weight="semibold" color={colors.gold}>
+            My account · documents and details
+          </T>
         </View>
-      </View>
+        <Icon name="chevron" size={18} color={colors.white} strokeWidth={2} />
+      </Pressable>
 
       <View style={{ gap: 4 }}>
         <T size={14} weight="semibold" style={{ marginBottom: 4 }}>
@@ -125,7 +133,7 @@ export default function Profile() {
         />
       </View>
 
-      <Pressable onPress={() => router.replace('/')} style={{ alignSelf: 'center', padding: 8 }}>
+      <Pressable onPress={() => router.replace('/sign-in')} style={{ alignSelf: 'center', padding: 8 }}>
         <T size={13} color={colors.muted} style={{ textDecorationLine: 'underline' }}>
           Sign out
         </T>
