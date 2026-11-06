@@ -30,6 +30,7 @@ export type Draft = {
   code: string;
   phone: string;
   email: string;
+  contactMethod: 'phone' | 'email'; // how they sign in and get codes, like the website
   password: string; // kept in memory only, never saved to the phone
   passwordConfirm: string;
   country: string;
@@ -55,6 +56,7 @@ const empty = (home: boolean): Draft => ({
   code: home ? '+234' : '+44',
   phone: '',
   email: '',
+  contactMethod: 'phone',
   password: '',
   passwordConfirm: '',
   country: home ? 'Nigeria' : 'United Kingdom',
