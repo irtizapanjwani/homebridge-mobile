@@ -3,7 +3,8 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { StepHeader, useRegister } from '@/components/register';
+import { PasswordInput } from '@/components/form';
+import { MIN_PASSWORD_LENGTH, StepHeader, useRegister } from '@/components/register';
 import { Button, Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
 
@@ -25,9 +26,9 @@ function Select({ value, options, onChange, label }: { value: string; options: s
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, flex }: { label: string; children: React.ReactNode; flex?: boolean }) {
   return (
-    <View style={{ gap: 6, flex: 1 }}>
+    <View style={[{ gap: 6 }, flex && { flex: 1 }]}>
       <T size={13} weight="medium">
         {label}
       </T>
@@ -45,7 +46,10 @@ export default function Register() {
   const home = type === 'home';
 
   const { draft, set, reset } = useRegister();
-  const { name, code, phone, email, country, cohort, agreed } = draft;
+  const { name, code, phone, email, password, passwordConfirm, country, cohort, agreed } = draft;
+  const emailOk = /^\S+@\S+\.\S+$/.test(email.trim());
+  const passwordOk = password.length >= MIN_PASSWORD_LENGTH;
+  const matchOk = passwordOk && password === passwordConfirm;
 
   // Start a fresh form when the member type changes (Welcome → Diaspora or Home).
   useEffect(() => {
@@ -56,6 +60,9 @@ export default function Register() {
   const missing = [
     name.trim().length <= 1 && 'type your full name',
     phone.trim().length <= 5 && 'type your mobile number',
+    !emailOk && 'type your email address',
+    !passwordOk && `choose a password of at least ${MIN_PASSWORD_LENGTH} characters`,
+    passwordOk && !matchOk && 'type the same password twice',
     !agreed && 'tick the box to agree to the bye-laws',
   ].filter(Boolean) as string[];
   const canContinue = missing.length === 0;
@@ -91,17 +98,45 @@ export default function Register() {
             />
           </View>
         </Field>
-        <Field label="Email (for receipts)">
+        <Field label="Email">
           <Input
             value={email}
             onChangeText={(v) => set({ email: v })}
             placeholder="you@example.com"
             keyboardType="email-address"
             autoCapitalize="none"
+            autoComplete="email"
           />
         </Field>
+        <Field label="Choose a password">
+          <PasswordInput
+            value={password}
+            onChangeText={(v) => set({ password: v })}
+            placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+            autoComplete="new-password"
+          />
+          <T size={12} color={passwordOk ? colors.green : colors.muted}>
+            {passwordOk ? 'Good length ✓' : 'Tip: three random words are easy to remember and hard to guess.'}
+          </T>
+        </Field>
+        <Field label="Type the password again">
+          <PasswordInput
+            value={passwordConfirm}
+            onChangeText={(v) => set({ passwordConfirm: v })}
+            placeholder="Same password"
+            autoComplete="new-password"
+          />
+          {passwordConfirm.length > 0 && (
+            <T size={12} color={matchOk ? colors.green : colors.goldText}>
+              {matchOk ? 'Passwords match ✓' : 'Passwords don’t match yet'}
+            </T>
+          )}
+        </Field>
+        <T size={12} color={colors.muted}>
+          You’ll sign in with your email or membership number and this password.
+        </T>
         <View style={styles.row}>
-          <Field label="Country you live in">
+          <Field label="Country you live in" flex>
             <Select
               label="Country"
               value={country}
@@ -109,7 +144,7 @@ export default function Register() {
               onChange={(v) => set({ country: v })}
             />
           </Field>
-          <Field label="Home cohort">
+          <Field label="Home cohort" flex>
             <Select label="Home cohort" value={cohort} options={['Edo', 'Abuja (FCT)', 'Other state']} onChange={(v) => set({ cohort: v })} />
           </Field>
         </View>
@@ -121,8 +156,8 @@ export default function Register() {
         </T>
         {[
           home
-            ? 'Verify ID — NIN at home. Photo from your phone.'
-            : 'Verify ID — passport or driving licence abroad; NIN at home. Photo from your phone.',
+            ? 'Verify ID — BVN or NIN, plus a photo of your ID and proof of address.'
+            : 'Verify ID — Non-Resident BVN or passport, plus a photo of your ID and proof of address.',
           `Pay the ${home ? '₦10,000' : '£10'} joining fee to VEKAT Group Ltd, the cooperative’s manager.`,
           'Get your member ID and set up your monthly contribution.',
         ].map((text, i) => (

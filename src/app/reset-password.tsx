@@ -11,9 +11,9 @@ const CODE_SECONDS = 15 * 60;
 
 function strength(pw: string) {
   let score = 0;
-  if (pw.length >= 8) score++;
+  if (pw.length >= 10) score++;
   if (/[A-Z]/.test(pw) && /\d/.test(pw)) score++;
-  if (pw.length >= 12) score++;
+  if (pw.length >= 14) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   const label = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong password'][score];
   return { score, label };
@@ -56,7 +56,7 @@ export default function ResetPassword() {
 
   const { score, label } = strength(password);
   const rules = {
-    length: password.length >= 8,
+    length: password.length >= 10,
     capNum: /[A-Z]/.test(password) && /\d/.test(password),
     // TODO: the server checks this against the old password; here we only know it's not empty.
     notOld: password.length > 0,
@@ -129,7 +129,7 @@ export default function ResetPassword() {
       </Field>
 
       <View style={styles.rules}>
-        <Rule ok={rules.length} label="At least 8 characters" />
+        <Rule ok={rules.length} label="At least 10 characters" />
         <Rule ok={rules.capNum} label="One capital letter and one number" />
         <Rule ok={rules.notOld} label="Not your old password" />
         <Rule ok={rules.match} label="Both passwords match" />

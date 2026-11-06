@@ -9,6 +9,8 @@ import { colors } from '@/constants/theme';
 // Same values as the website (lib/settings.ts and lib/register-data.ts).
 export const JOINING_FEE = { ngn: 10_000, gbp: 10, payee: 'VEKAT Group Ltd' };
 export const MIN_MONTHLY = { ngn: 5_000, gbp: 25 };
+// Same as the website (lib/member-auth.ts).
+export const MIN_PASSWORD_LENGTH = 10;
 export const BANK = { name: 'First Bank', accountName: 'VEKAT Nigeria Limited', accountNumber: '2049483671' };
 
 export const ID_OPTIONS = {
@@ -28,6 +30,8 @@ export type Draft = {
   code: string;
   phone: string;
   email: string;
+  password: string; // kept in memory only, never saved to the phone
+  passwordConfirm: string;
   country: string;
   cohort: string;
   agreed: boolean;
@@ -51,6 +55,8 @@ const empty = (home: boolean): Draft => ({
   code: home ? '+234' : '+44',
   phone: '',
   email: '',
+  password: '',
+  passwordConfirm: '',
   country: home ? 'Nigeria' : 'United Kingdom',
   cohort: 'Edo',
   agreed: false,
