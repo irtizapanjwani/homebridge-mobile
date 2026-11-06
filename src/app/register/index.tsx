@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { BackButton, Button, Screen, T } from '@/components/ui';
+import { StepHeader, useRegister } from '@/components/register';
+import { Button, Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
 
 // Simple tap-to-cycle picker. Swap for a proper bottom-sheet select later.
@@ -43,30 +44,20 @@ export default function Register() {
   const { type } = useLocalSearchParams<{ type?: string }>();
   const home = type === 'home';
 
-  const [name, setName] = useState('');
-  const [code, setCode] = useState(home ? '+234' : '+44');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [country, setCountry] = useState(home ? 'Nigeria' : 'United Kingdom');
-  const [cohort, setCohort] = useState('Edo');
-  const [agreed, setAgreed] = useState(false);
+  const { draft, set, reset } = useRegister();
+  const { name, code, phone, email, country, cohort, agreed } = draft;
+
+  // Start a fresh form when the member type changes (Welcome → Diaspora or Home).
+  useEffect(() => {
+    if (draft.home !== home) reset(home);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [home]);
 
   const canContinue = agreed && name.trim().length > 1 && phone.trim().length > 5;
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 16 }}>
-      <View style={styles.row}>
-        <BackButton />
-        <T size={13} color={colors.muted}>
-          Step 1 of 4 · Your details
-        </T>
-      </View>
-
-      <View style={styles.steps}>
-        {[0, 1, 2, 3].map((i) => (
-          <View key={i} style={[styles.step, { backgroundColor: i === 0 ? colors.green : colors.line }]} />
-        ))}
-      </View>
+      <StepHeader step={1} title="Your details" />
 
       <View style={{ gap: 4 }}>
         <T serif size={26} color={colors.green}>
@@ -79,16 +70,16 @@ export default function Register() {
 
       <View style={{ gap: 12 }}>
         <Field label="Full name (as on your ID)">
-          <Input value={name} onChangeText={setName} placeholder="e.g. Ada Okafor" autoComplete="name" />
+          <Input value={name} onChangeText={(v) => set({ name: v })} placeholder="e.g. Ada Okafor" autoComplete="name" />
         </Field>
         <Field label="Mobile number (WhatsApp)">
           <View style={styles.row}>
             <View style={{ width: 96 }}>
-              <Select label="Country code" value={code} options={['+44', '+234', '+1']} onChange={setCode} />
+              <Select label="Country code" value={code} options={['+44', '+234', '+1']} onChange={(v) => set({ code: v })} />
             </View>
             <Input
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(v) => set({ phone: v })}
               placeholder="7700 900123"
               keyboardType="phone-pad"
               style={{ flex: 1, minWidth: 0 }}
@@ -98,7 +89,7 @@ export default function Register() {
         <Field label="Email (for receipts)">
           <Input
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(v) => set({ email: v })}
             placeholder="you@example.com"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -110,11 +101,11 @@ export default function Register() {
               label="Country"
               value={country}
               options={['United Kingdom', 'Nigeria', 'Ghana', 'United States']}
-              onChange={setCountry}
+              onChange={(v) => set({ country: v })}
             />
           </Field>
           <Field label="Home cohort">
-            <Select label="Home cohort" value={cohort} options={['Edo', 'Abuja (FCT)', 'Other state']} onChange={setCohort} />
+            <Select label="Home cohort" value={cohort} options={['Edo', 'Abuja (FCT)', 'Other state']} onChange={(v) => set({ cohort: v })} />
           </Field>
         </View>
       </View>
@@ -144,7 +135,7 @@ export default function Register() {
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: agreed }}
-        onPress={() => setAgreed(!agreed)}
+        onPress={() => set({ agreed: !agreed })}
         style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
         <View style={[styles.checkbox, agreed && { backgroundColor: colors.green, borderColor: colors.green }]}>
           {agreed && (
@@ -166,7 +157,7 @@ export default function Register() {
         label="Continue"
         variant={canContinue ? 'primary' : 'disabled'}
         style={{ marginTop: 'auto' }}
-        onPress={() => router.replace('/home')}
+        onPress={() => router.push('/register/verify-id')}
       />
     </Screen>
   );
@@ -174,8 +165,6 @@ export default function Register() {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  steps: { flexDirection: 'row', gap: 6 },
-  step: { flex: 1, height: 5, borderRadius: 3 },
   input: {
     height: 48,
     borderWidth: 1,

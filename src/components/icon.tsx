@@ -33,7 +33,10 @@ export type IconName =
   | 'eyeOff'
   | 'fingerprint'
   | 'copy'
-  | 'award';
+  | 'award'
+  | 'camera'
+  | 'card'
+  | 'bank';
 
 type Props = {
   name: IconName;
@@ -166,6 +169,22 @@ export function Icon({ name, size = 24, color = colors.green, strokeWidth = 1.8 
             <Path d="M8.5 12l2.5 2.5 4.5-5" {...common} />
           </>
         );
+      case 'camera':
+        return (
+          <>
+            <Path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" {...common} />
+            <Circle cx="12" cy="13" r="3.5" {...common} />
+          </>
+        );
+      case 'card':
+        return (
+          <>
+            <Rect x="3" y="5" width="18" height="14" rx="2" {...common} />
+            <Path d="M3 10h18M7 15h4" {...common} />
+          </>
+        );
+      case 'bank':
+        return <Path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" {...common} />;
       case 'lock':
         return (
           <>
