@@ -1,30 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 
-import { PasswordInput, Segment } from '@/components/form';
+import { CountryCodePicker, PasswordInput, Segment } from '@/components/form';
 import { MIN_PASSWORD_LENGTH, StepHeader, useRegister } from '@/components/register';
 import { Button, Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
-
-// Simple tap-to-cycle picker. Swap for a proper bottom-sheet select later.
-function Select({ value, options, onChange, label }: { value: string; options: string[]; onChange: (v: string) => void; label: string }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value}`}
-      onPress={() => onChange(options[(options.indexOf(value) + 1) % options.length])}
-      style={[styles.input, styles.select]}>
-      <T size={15} numberOfLines={1} style={{ flex: 1 }}>
-        {value}
-      </T>
-      <Svg width={14} height={14} viewBox="0 0 24 24">
-        <Path d="M6 9l6 6 6-6" stroke={colors.muted} strokeWidth={2.2} fill="none" strokeLinecap="round" />
-      </Svg>
-    </Pressable>
-  );
-}
 
 function Field({ label, children, flex }: { label: string; children: React.ReactNode; flex?: boolean }) {
   return (
@@ -71,8 +52,8 @@ export default function Register() {
   const phoneField = (
         <Field label="Mobile number (WhatsApp)">
           <View style={styles.row}>
-            <View style={{ width: 96 }}>
-              <Select label="Country code" value={code} options={['+44', '+234', '+1']} onChange={(v) => set({ code: v })} />
+            <View style={{ width: 112 }}>
+              <CountryCodePicker value={code} onChange={(v) => set({ code: v })} />
             </View>
             <Input
               value={phone}

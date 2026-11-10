@@ -5,7 +5,7 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { ErrorBox, OFFICE_WHATSAPP } from '@/components/applicant';
 import { api } from '@/lib/api';
 
-import { Field, Input, Segment, Select, TextLink } from '@/components/form';
+import { CountryCodePicker, Field, Input, Segment, TextLink } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { BackButton, Button, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
@@ -74,8 +74,8 @@ export default function ForgotPassword() {
       {channel === 'phone' ? (
         <Field label="Mobile number (WhatsApp)">
           <View style={[styles.row, { gap: 8 }]}>
-            <View style={{ width: 96 }}>
-              <Select label="Country code" value={code} options={['+44', '+234', '+1']} onChange={setCode} />
+            <View style={{ width: 112 }}>
+              <CountryCodePicker value={code} onChange={setCode} />
             </View>
             <View style={{ flex: 1 }}>
               <Input value={phone} onChangeText={setPhone} placeholder="7700 900123" keyboardType="phone-pad" autoComplete="tel" />

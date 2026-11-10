@@ -213,3 +213,86 @@ export function ListPicker({ label, value, options, onChange, placeholder = 'Cho
     </>
   );
 }
+
+/** Dialling codes for the countries on the registration form (same list as the website), Nigeria and the UK first. */
+export const DIAL_CODES = [
+  { country: 'Nigeria', flag: '🇳🇬', code: '+234' },
+  { country: 'United Kingdom', flag: '🇬🇧', code: '+44' },
+  { country: 'United States', flag: '🇺🇸', code: '+1' },
+  { country: 'Canada', flag: '🇨🇦', code: '+1' },
+  { country: 'Ireland', flag: '🇮🇪', code: '+353' },
+  { country: 'Germany', flag: '🇩🇪', code: '+49' },
+  { country: 'Netherlands', flag: '🇳🇱', code: '+31' },
+  { country: 'Italy', flag: '🇮🇹', code: '+39' },
+  { country: 'France', flag: '🇫🇷', code: '+33' },
+  { country: 'Spain', flag: '🇪🇸', code: '+34' },
+  { country: 'Belgium', flag: '🇧🇪', code: '+32' },
+  { country: 'United Arab Emirates', flag: '🇦🇪', code: '+971' },
+  { country: 'Saudi Arabia', flag: '🇸🇦', code: '+966' },
+  { country: 'Qatar', flag: '🇶🇦', code: '+974' },
+  { country: 'South Africa', flag: '🇿🇦', code: '+27' },
+  { country: 'Ghana', flag: '🇬🇭', code: '+233' },
+  { country: 'Kenya', flag: '🇰🇪', code: '+254' },
+  { country: 'Australia', flag: '🇦🇺', code: '+61' },
+] as const;
+
+/** Country code dropdown: shows the flag and code, and opens a list of countries to choose from. */
+export function CountryCodePicker({ value, onChange }: { value: string; onChange: (code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null); // which country, since +1 is shared
+  const current = DIAL_CODES.find((d) => d.country === picked && d.code === value) ?? DIAL_CODES.find((d) => d.code === value);
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Country code: ${current ? `${current.country} ${current.code}` : value}. Change`}
+        onPress={() => setOpen(true)}
+        style={[styles.input, styles.row, { gap: 6, paddingHorizontal: 10 }]}>
+        <T size={18}>{current?.flag ?? '🌐'}</T>
+        <T size={15} style={{ flex: 1 }}>
+          {value}
+        </T>
+        <Svg width={14} height={14} viewBox="0 0 24 24">
+          <Path d="M6 9l6 6 6-6" stroke={colors.muted} strokeWidth={2.2} fill="none" strokeLinecap="round" />
+        </Svg>
+      </Pressable>
+      <PopupFrame visible={open} onClose={() => setOpen(false)} place="bottom" panelStyle={{ backgroundColor: colors.white, gap: 0 }}>
+        <View style={[styles.row, { justifyContent: 'space-between', paddingBottom: 8 }]}>
+          <T size={16} weight="semibold">
+            Country code
+          </T>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => setOpen(false)} hitSlop={8}>
+            <T size={20} color={colors.green}>
+              ✕
+            </T>
+          </Pressable>
+        </View>
+        <ScrollView style={{ flexGrow: 0, flexShrink: 1 }}>
+          {DIAL_CODES.map((d) => {
+            const on = d === current;
+            return (
+              <Pressable
+                key={d.country}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                onPress={() => {
+                  setPicked(d.country);
+                  onChange(d.code);
+                  setOpen(false);
+                }}
+                style={[styles.option, { gap: 10 }, on && { backgroundColor: colors.mint }]}>
+                <T size={20}>{d.flag}</T>
+                <T size={15} weight={on ? 'semibold' : 'regular'} color={on ? colors.green : colors.ink} style={{ flex: 1 }}>
+                  {d.country}
+                </T>
+                <T size={15} weight="semibold" color={on ? colors.green : colors.muted}>
+                  {d.code}
+                </T>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </PopupFrame>
+    </>
+  );
+}
