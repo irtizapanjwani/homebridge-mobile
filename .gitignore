@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Server secrets for the API (MONGODB_URI etc.) — never commit
+.env
