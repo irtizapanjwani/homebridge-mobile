@@ -6,6 +6,7 @@ import { Icon, type IconName } from '@/components/icon';
 import { T } from '@/components/ui';
 import { colors, TAB_BAR_HEIGHT } from '@/constants/theme';
 import { useSession } from '@/lib/session';
+import { AccountLoading } from '@/components/account-loading';
 
 const tabs: Record<string, { label: string; icon: IconName }> = {
   home: { label: 'Home', icon: 'home' },
@@ -48,9 +49,11 @@ function TabBar({ state, navigateToTab, insets }: BottomTabBarProps) {
 export default function TabsLayout() {
   // Member screens need a sign-in. Wait until the saved sign-in has been checked, then send
   // anyone without one to the Sign in screen.
-  const { ready, token, me } = useSession();
+  const { ready, token, me, meError, refreshMe, signOut } = useSession();
   if (!ready) return null;
   if (!token) return <Redirect href="/sign-in" />;
+  // Never fall back to demo screens: until the account has loaded, show loading or the error.
+  if (!me) return <AccountLoading error={meError} retry={refreshMe} signOut={signOut} />;
   // Applicants haven't got member screens yet — they get the applicant dashboard.
   if (me && !me.memberNo) return <Redirect href="/applicant" />;
 
