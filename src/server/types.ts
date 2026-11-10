@@ -41,6 +41,7 @@ export type MemberDoc = {
   nominees: { name: string; relationship: string; contact: string; share: number }[];
   passwordHash?: string;
   passwordReset?: { tokenHash: string; expiresAt: Date; requestedAt: Date; attempts?: number };
+  loginCode?: { hash: string; expiresAt: Date; attempts: number };
   membership?: { memberNo: string; zone: string; seq: number; admittedAt: Date; category?: string };
   decision?: { reason?: string; at: Date };
   infoResponse?: { message: string; at: Date; documentIds?: string[] };
