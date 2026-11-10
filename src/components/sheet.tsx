@@ -19,18 +19,21 @@ export function PopupFrame({
   children,
   place = 'center',
   panelStyle,
+  heightRatio,
 }: {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
   place?: 'center' | 'bottom';
   panelStyle?: ViewStyle;
+  /** Caps the panel at this share of the screen height (e.g. 0.55 for a short list). */
+  heightRatio?: number;
 }) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const top = insets.top + GAP;
   const bottom = (place === 'bottom' ? 0 : GAP) + insets.bottom;
-  const maxHeight = height - top - bottom;
+  const maxHeight = Math.min(height - top - bottom, heightRatio ? height * heightRatio : Infinity);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>

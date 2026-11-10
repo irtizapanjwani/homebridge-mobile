@@ -137,7 +137,7 @@ export function TextLink({ label, onPress, size = 13, color = colors.green }: { 
 }
 
 const styles = StyleSheet.create({
-  option: { flexDirection: 'row', alignItems: 'center', minHeight: 46, borderRadius: 10, paddingHorizontal: 10 },
+  option: { flexDirection: 'row', alignItems: 'center', minHeight: 44, borderRadius: 10, paddingHorizontal: 10 },
   row: { flexDirection: 'row', alignItems: 'center' },
   input: {
     height: 52,
@@ -180,7 +180,7 @@ export function ListPicker({ label, value, options, onChange, placeholder = 'Cho
           <Path d="M6 9l6 6 6-6" stroke={colors.muted} strokeWidth={2.2} fill="none" strokeLinecap="round" />
         </Svg>
       </Pressable>
-      <PopupFrame visible={open} onClose={() => setOpen(false)} place="bottom" panelStyle={{ backgroundColor: colors.white, gap: 0 }}>
+      <PopupFrame visible={open} onClose={() => setOpen(false)} place="bottom" heightRatio={0.55} panelStyle={{ backgroundColor: colors.white, gap: 0, paddingTop: 14 }}>
             <View style={[styles.row, { justifyContent: 'space-between', paddingBottom: 8 }]}>
               <T size={16} weight="semibold">
                 {label}
@@ -256,7 +256,7 @@ export function CountryCodePicker({ value, onChange }: { value: string; onChange
           <Path d="M6 9l6 6 6-6" stroke={colors.muted} strokeWidth={2.2} fill="none" strokeLinecap="round" />
         </Svg>
       </Pressable>
-      <PopupFrame visible={open} onClose={() => setOpen(false)} place="bottom" panelStyle={{ backgroundColor: colors.white, gap: 0 }}>
+      <PopupFrame visible={open} onClose={() => setOpen(false)} place="bottom" heightRatio={0.55} panelStyle={{ backgroundColor: colors.white, gap: 0, paddingTop: 14 }}>
         <View style={[styles.row, { justifyContent: 'space-between', paddingBottom: 8 }]}>
           <T size={16} weight="semibold">
             Country code
