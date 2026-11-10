@@ -147,10 +147,7 @@ export default function Profile() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={async () => {
-          await signOut();
-          router.replace('/sign-in');
-        }}
+        onPress={signOut}
         style={{ alignSelf: 'center', padding: 8 }}>
         <T size={13} color={colors.muted} style={{ textDecorationLine: 'underline' }}>
           Sign out

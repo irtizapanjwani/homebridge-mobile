@@ -246,10 +246,7 @@ export default function ApplicantDashboard() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={async () => {
-          await signOut();
-          router.replace('/sign-in');
-        }}
+        onPress={signOut}
         style={{ alignSelf: 'center', padding: 10 }}>
         <T size={14} weight="semibold" color={colors.muted}>
           Sign out

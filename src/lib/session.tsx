@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
@@ -62,10 +63,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [meError, setMeError] = useState('');
 
+  /**
+   * Signs out and goes straight to the Sign in screen, like most apps. The order matters: move to
+   * Sign in first, and only then forget the account. Done the other way round, the screens still on
+   * show see the account vanish mid-way and can leave a blank white screen.
+   */
   const signOut = useCallback(async () => {
-    setToken(null);
-    setMe(null);
     await store.set(null);
+    if (router.canDismiss()) router.dismissAll();
+    router.replace('/sign-in');
+    setTimeout(() => {
+      setToken(null);
+      setMe(null);
+    }, 0);
   }, []);
 
   const loadMe = useCallback(

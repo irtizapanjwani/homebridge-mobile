@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,10 +23,7 @@ export function AccountLoading({ error, retry, signOut }: { error: string; retry
           <Button label="Try again" onPress={retry} />
           <Pressable
             accessibilityRole="button"
-            onPress={async () => {
-              await signOut();
-              router.replace('/sign-in');
-            }}
+            onPress={signOut}
             style={{ alignSelf: 'center', padding: 10 }}>
             <T size={14} weight="semibold" color={colors.muted}>
               Sign out
