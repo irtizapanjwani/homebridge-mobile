@@ -296,3 +296,35 @@ export function CountryCodePicker({ value, onChange }: { value: string; onChange
     </>
   );
 }
+
+/**
+ * Turns what was typed into DD/MM/YYYY, adding the slashes as you go: "09" → "09/", "0903" → "09/03/".
+ * Deleting works naturally: backspace over a slash also removes the digit before it.
+ */
+export function formatDateTyping(prev: string, next: string) {
+  let digits = next.replace(/\D/g, '').slice(0, 8);
+  // Backspace that only removed a slash: take the digit before it too, or the slash would come straight back.
+  if (next.length < prev.length && prev.endsWith('/') && digits === prev.replace(/\D/g, '')) digits = digits.slice(0, -1);
+  const deleting = next.length < prev.length;
+  const d = digits.slice(0, 2);
+  const m = digits.slice(2, 4);
+  const y = digits.slice(4);
+  let out = d;
+  if (digits.length > 2 || (digits.length === 2 && !deleting)) out += '/' + m;
+  if (digits.length > 4 || (digits.length === 4 && !deleting)) out += '/' + y;
+  return out;
+}
+
+/** A date box (DD/MM/YYYY) that adds the slashes for you. */
+export function DateInput({ value, onChangeText, ...rest }: Omit<TextInputProps, 'onChangeText' | 'value'> & { value: string; onChangeText: (v: string) => void }) {
+  return (
+    <Input
+      {...rest}
+      value={value}
+      onChangeText={(t) => onChangeText(formatDateTyping(value, t))}
+      placeholder={rest.placeholder ?? 'DD/MM/YYYY'}
+      keyboardType="number-pad"
+      maxLength={10}
+    />
+  );
+}

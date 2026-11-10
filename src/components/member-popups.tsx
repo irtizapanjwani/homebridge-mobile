@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ErrorBox } from '@/components/applicant';
-import { Field, Input, Segment } from '@/components/form';
+import { DateInput, Field, Input, Segment } from '@/components/form';
 import { Icon, type IconName } from '@/components/icon';
 import { Sheet } from '@/components/sheet';
 import { Button, T } from '@/components/ui';
@@ -137,7 +137,7 @@ export function ProofOfPaymentSheet({ visible, onClose, currency }: { visible: b
               <Input value={amount} onChangeText={(v) => setAmount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" placeholder={cur === 'GBP' ? '25' : '5000'} />
             </Field>
             <Field label="Date paid" flex>
-              <Input value={date} onChangeText={setDate} placeholder="DD/MM/YYYY" keyboardType="numbers-and-punctuation" />
+              <DateInput value={date} onChangeText={setDate} />
             </Field>
           </View>
           <Field label="Which month is it for?">

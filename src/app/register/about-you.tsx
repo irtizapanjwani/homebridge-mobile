@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Field, Input, ListPicker } from '@/components/form';
+import { DateInput, Field, Input, ListPicker } from '@/components/form';
 import { ageFrom, CHAPTERS, ChoiceCard, COUNTRIES, HEARD_OPTIONS, NIGERIAN_STATES, OTHER_COUNTRY, StepHeader, useRegister } from '@/components/register';
 import { Button, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
@@ -39,13 +39,7 @@ export default function AboutYou() {
       </View>
 
       <Field label="Date of birth">
-        <Input
-          value={draft.dob}
-          onChangeText={(v) => set({ dob: v.replace(/[^\d/]/g, '').slice(0, 10) })}
-          placeholder="DD/MM/YYYY"
-          keyboardType="numbers-and-punctuation"
-          autoComplete="birthdate-full"
-        />
+        <DateInput value={draft.dob} onChangeText={(v) => set({ dob: v })} autoComplete="birthdate-full" />
         <T size={12} color={age !== null && age < 18 ? '#9A3B26' : colors.muted}>
           You need to be 18 or older to join.
         </T>

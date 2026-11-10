@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
-import { Field, Input } from '@/components/form';
+import { DateInput, Field, Input } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { BANK, ChoiceCard, JOINING_FEE, money, StepHeader, useRegister } from '@/components/register';
 import { Button, Screen, T } from '@/components/ui';
@@ -117,7 +117,7 @@ export default function JoiningFee() {
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Field label="Date paid (optional)" flex>
-              <Input value={draft.datePaid} onChangeText={(v) => set({ datePaid: v })} placeholder="DD/MM/YYYY" keyboardType="numbers-and-punctuation" />
+              <DateInput value={draft.datePaid} onChangeText={(v) => set({ datePaid: v })} />
             </Field>
             <Field label="Reference (optional)" flex>
               <Input value={draft.payReference} onChangeText={(v) => set({ payReference: v })} placeholder="Transaction ID" autoCapitalize="characters" />
