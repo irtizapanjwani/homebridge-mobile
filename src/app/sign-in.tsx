@@ -7,7 +7,7 @@ import { Icon } from '@/components/icon';
 import { Logo } from '@/components/logo';
 import { BackButton, Button, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
-import { useSession } from '@/lib/session';
+import { homeFor, useSession } from '@/lib/session';
 
 export default function SignIn() {
   const [login, setLogin] = useState('');
@@ -27,8 +27,8 @@ export default function SignIn() {
     setBusy(true);
     setError('');
     try {
-      await session.signIn(login.trim(), password, keep);
-      router.replace('/home');
+      const me = await session.signIn(login.trim(), password, keep);
+      router.replace(homeFor(me));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign you in. Please try again.');
     } finally {

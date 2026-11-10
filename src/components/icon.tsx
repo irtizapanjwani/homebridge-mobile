@@ -36,7 +36,8 @@ export type IconName =
   | 'award'
   | 'camera'
   | 'card'
-  | 'bank';
+  | 'bank'
+  | 'calendar';
 
 type Props = {
   name: IconName;
@@ -167,6 +168,13 @@ export function Icon({ name, size = 24, color = colors.green, strokeWidth = 1.8 
           <>
             <Path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z" {...common} />
             <Path d="M8.5 12l2.5 2.5 4.5-5" {...common} />
+          </>
+        );
+      case 'calendar':
+        return (
+          <>
+            <Rect x="3" y="5" width="18" height="16" rx="2" {...common} />
+            <Path d="M3 10h18M8 3v4M16 3v4" {...common} />
           </>
         );
       case 'camera':

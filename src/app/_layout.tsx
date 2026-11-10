@@ -45,6 +45,7 @@ export default function RootLayout() {
           <Stack.Screen name="sign-in" />
           <Stack.Screen name="forgot-password" />
           <Stack.Screen name="reset-password" />
+          <Stack.Screen name="applicant" options={{ animation: 'fade' }} />
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         </Stack>
       </View>

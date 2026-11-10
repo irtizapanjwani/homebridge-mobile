@@ -41,7 +41,7 @@ export type MemberDoc = {
   passwordReset?: { tokenHash: string; expiresAt: Date; requestedAt: Date };
   membership?: { memberNo: string; zone: string; seq: number; admittedAt: Date; category?: string };
   decision?: { reason?: string; at: Date };
-  infoResponse?: { message: string; at: Date };
+  infoResponse?: { message: string; at: Date; documentIds?: string[] };
 };
 
 export type Currency = 'NGN' | 'GBP' | 'USD';

@@ -48,9 +48,11 @@ function TabBar({ state, navigateToTab, insets }: BottomTabBarProps) {
 export default function TabsLayout() {
   // Member screens need a sign-in. Wait until the saved sign-in has been checked, then send
   // anyone without one to the Sign in screen.
-  const { ready, token } = useSession();
+  const { ready, token, me } = useSession();
   if (!ready) return null;
   if (!token) return <Redirect href="/sign-in" />;
+  // Applicants haven't got member screens yet — they get the applicant dashboard.
+  if (me && !me.memberNo) return <Redirect href="/applicant" />;
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>

@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
  * - Phone in development: the Expo dev server on your computer.
  * - Phone in production: set EXPO_PUBLIC_API_URL to the deployed site, e.g. https://homebridge-app.vercel.app
  */
-function baseUrl() {
+export function baseUrl() {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL;
   if (fromEnv) return fromEnv.replace(/\/$/, '');
   if (Platform.OS === 'web') return '';
