@@ -6,6 +6,7 @@ import { Icon } from '@/components/icon';
 import { Button, Screen, T, Toggle } from '@/components/ui';
 import { colors } from '@/constants/theme';
 import { member, statements } from '@/data/mock';
+import { useSession } from '@/lib/session';
 
 function LinkRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
@@ -40,6 +41,7 @@ function ToggleRow({ label, detail, on, onPress }: { label: string; detail: stri
 }
 
 export default function Profile() {
+  const { signOut } = useSession();
   const [lowData, setLowData] = useState(true);
   const [alerts, setAlerts] = useState(true);
 
@@ -133,7 +135,13 @@ export default function Profile() {
         />
       </View>
 
-      <Pressable onPress={() => router.replace('/sign-in')} style={{ alignSelf: 'center', padding: 8 }}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={async () => {
+          await signOut();
+          router.replace('/sign-in');
+        }}
+        style={{ alignSelf: 'center', padding: 8 }}>
         <T size={13} color={colors.muted} style={{ textDecorationLine: 'underline' }}>
           Sign out
         </T>

@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
+import { SessionProvider } from '@/lib/session';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -34,6 +35,7 @@ export default function RootLayout() {
   if (!loaded && !error) return null;
 
   return (
+    <SessionProvider>
     <View style={styles.page}>
       <View style={styles.phone}>
         <StatusBar style="dark" />
@@ -47,6 +49,7 @@ export default function RootLayout() {
         </Stack>
       </View>
     </View>
+    </SessionProvider>
   );
 }
 

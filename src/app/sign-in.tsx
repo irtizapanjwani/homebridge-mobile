@@ -7,16 +7,34 @@ import { Icon } from '@/components/icon';
 import { Logo } from '@/components/logo';
 import { BackButton, Button, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
+import { useSession } from '@/lib/session';
 
 export default function SignIn() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [keep, setKeep] = useState(true);
 
-  const canSignIn = login.trim().length > 2 && password.length > 0;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const session = useSession();
 
-  // TODO: call the website's member login API. For now any input signs in to the demo data.
-  const signIn = () => router.replace('/home');
+  const canSignIn = login.trim().length > 2 && password.length > 0 && !busy;
+
+  // Checks the details with the API (same accounts as the website). Only a correct email /
+  // membership number / phone + password gets in.
+  const signIn = async () => {
+    if (!canSignIn) return;
+    setBusy(true);
+    setError('');
+    try {
+      await session.signIn(login.trim(), password, keep);
+      router.replace('/home');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not sign you in. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 16 }}>
@@ -36,7 +54,7 @@ export default function SignIn() {
         <Input
           value={login}
           onChangeText={setLogin}
-          placeholder="e.g. HB-EDO-0123"
+          placeholder="Email, HBC- number or phone"
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="username"
@@ -54,23 +72,15 @@ export default function SignIn() {
         <TextLink label="Forgot password?" onPress={() => router.push('/forgot-password')} />
       </View>
 
-      <Button label="Sign in" variant={canSignIn ? 'primary' : 'disabled'} onPress={signIn} />
+      {error ? (
+        <View style={styles.error} accessibilityRole="alert">
+          <T size={13} color="#9A3B26">
+            {error}
+          </T>
+        </View>
+      ) : null}
 
-      <View style={styles.or}>
-        <View style={styles.line} />
-        <T size={12} color={colors.muted}>
-          or
-        </T>
-        <View style={styles.line} />
-      </View>
-
-      <Button
-        label="Sign in with PIN or fingerprint"
-        variant="outline"
-        textSize={15}
-        icon={<Icon name="fingerprint" size={20} color={colors.green} strokeWidth={1.8} />}
-        onPress={signIn}
-      />
+      <Button label={busy ? 'Signing in…' : 'Sign in'} variant={canSignIn ? 'primary' : 'disabled'} onPress={signIn} />
 
       <View style={{ marginTop: 'auto', gap: 10, alignItems: 'center', paddingTop: 16 }}>
         <T size={13}>
@@ -93,6 +103,5 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   head: { alignItems: 'center', gap: 6, marginBottom: 8 },
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  or: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  line: { flex: 1, height: 1, backgroundColor: colors.line },
+  error: { backgroundColor: '#FDF1EC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#F0D3C7' },
 });

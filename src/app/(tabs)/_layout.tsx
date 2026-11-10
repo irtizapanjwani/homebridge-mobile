@@ -1,9 +1,11 @@
+import { Redirect } from 'expo-router';
 import { Tabs, type BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
 import { T } from '@/components/ui';
 import { colors, TAB_BAR_HEIGHT } from '@/constants/theme';
+import { useSession } from '@/lib/session';
 
 const tabs: Record<string, { label: string; icon: IconName }> = {
   home: { label: 'Home', icon: 'home' },
@@ -44,6 +46,12 @@ function TabBar({ state, navigateToTab, insets }: BottomTabBarProps) {
 }
 
 export default function TabsLayout() {
+  // Member screens need a sign-in. Wait until the saved sign-in has been checked, then send
+  // anyone without one to the Sign in screen.
+  const { ready, token } = useSession();
+  if (!ready) return null;
+  if (!token) return <Redirect href="/sign-in" />;
+
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="home" />
