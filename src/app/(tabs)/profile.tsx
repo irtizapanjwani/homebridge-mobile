@@ -5,7 +5,7 @@ import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Icon } from '@/components/icon';
 import { Button, Screen, T, Toggle } from '@/components/ui';
 import { colors } from '@/constants/theme';
-import { member, statements } from '@/data/mock';
+
 import { useSession } from '@/lib/session';
 
 function LinkRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
@@ -41,9 +41,10 @@ function ToggleRow({ label, detail, on, onPress }: { label: string; detail: stri
 }
 
 export default function Profile() {
-  const { signOut } = useSession();
+  const { signOut, me } = useSession();
   const [lowData, setLowData] = useState(true);
   const [alerts, setAlerts] = useState(true);
+  if (!me) return null; // the tabs only open once the account has loaded
 
   return (
     <Screen withTabBar>
@@ -58,18 +59,18 @@ export default function Profile() {
         style={styles.memberCard}>
         <View style={styles.avatar}>
           <T size={20} weight="bold">
-            {member.initials}
+            {me.initials}
           </T>
         </View>
         <View style={{ flex: 1, gap: 2 }}>
           <T size={17} weight="semibold" color={colors.white}>
-            {member.fullName}
+            {me.fullName}
           </T>
           <T size={12} color={colors.mintText}>
-            {member.memberId} · {member.type} · {member.cohort}
+            {[me.memberNo, me.memberType, me.chapter].filter(Boolean).join(' · ')}
           </T>
           <T size={12} color={colors.mintText}>
-            Member since {member.since} · ID verified
+            {me.membership ? `Member since ${me.membership.since}` : me.status}
           </T>
           <T size={12} weight="semibold" color={colors.gold}>
             My account · documents and details
@@ -80,21 +81,27 @@ export default function Profile() {
 
       <View style={{ gap: 4 }}>
         <T size={14} weight="semibold" style={{ marginBottom: 4 }}>
-          Statements
+          Recent receipts
         </T>
-        {statements.map((s) => (
-          <View key={s.id} style={[styles.statement, styles.divider]}>
-            <T size={14} style={{ flex: 1 }}>
-              {s.label}
-            </T>
-            <T size={13} color={colors.muted}>
-              {s.amount}
-            </T>
-            <Pressable accessibilityRole="button" accessibilityLabel={`Download ${s.label} statement`} style={styles.download}>
-              <Icon name="download" size={20} strokeWidth={2} />
-            </Pressable>
-          </View>
-        ))}
+        {(me.contributions?.items ?? []).length === 0 ? (
+          <T size={13} color={colors.muted}>
+            No contributions recorded yet.
+          </T>
+        ) : (
+          (me.contributions?.items ?? []).slice(0, 5).map((s) => (
+            <View key={s.receiptNo} style={[styles.statement, styles.divider]}>
+              <View style={{ flex: 1 }}>
+                <T size={14}>{s.period}</T>
+                <T size={12} color={colors.muted}>
+                  {s.receiptNo}
+                </T>
+              </View>
+              <T size={13} color={colors.muted}>
+                {s.amount}
+              </T>
+            </View>
+          ))
+        )}
       </View>
 
       <View style={styles.settings}>
@@ -112,7 +119,7 @@ export default function Profile() {
           onPress={() => setAlerts(!alerts)}
         />
         <LinkRow label="Show amounts in" value="£ and ₦" />
-        <LinkRow label="PIN and fingerprint" value="On" last />
+        <LinkRow label="PIN and fingerprint" value="Coming soon" last />
       </View>
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -123,6 +130,7 @@ export default function Profile() {
           textSize={13}
           style={{ flex: 1 }}
           icon={<Icon name="chat" size={18} color={colors.ink} strokeWidth={2} />}
+          onPress={() => Linking.openURL('https://wa.me/2348105832602')}
         />
         <Button
           label="Email the office"
@@ -131,7 +139,7 @@ export default function Profile() {
           textSize={13}
           style={{ flex: 1 }}
           icon={<Icon name="mail" size={18} color={colors.ink} strokeWidth={2} />}
-          onPress={() => Linking.openURL('mailto:')}
+          onPress={() => Linking.openURL('mailto:info@homebridgecooperative.org')}
         />
       </View>
 

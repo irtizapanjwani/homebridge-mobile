@@ -130,6 +130,7 @@ export async function buildMe(m: MemberDoc) {
           shares,
           items: contribs.map((c) => ({
             receiptNo: c.receiptNo,
+            periodKey: c.period, // YYYY-MM, for counting months paid
             period: periodLabel(c.period),
             amount: money(c.amount, c.currency),
             paidAt: SHORT.format(c.paidAt),

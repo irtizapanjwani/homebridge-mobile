@@ -7,7 +7,18 @@ import { TextLink } from '@/components/form';
 import { CheckBadge, Icon } from '@/components/icon';
 import { BackButton, Pill, Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
-import { account, member, office } from '@/data/mock';
+import { api } from '@/lib/api';
+import { useSession, type Me } from '@/lib/session';
+
+const OFFICE = { email: 'info@homebridgecooperative.org', website: 'https://homebridge-two.vercel.app' };
+
+const initialsOf = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
 
 const steps = ['In review', 'Information requested', 'Approved'] as const;
 
@@ -41,14 +52,20 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 /** A detail row with an Edit button that turns it into an input. */
-function EditableRow({ label, value, onSave, multiline, last }: { label: string; value: string; onSave: (v: string) => void; multiline?: boolean; last?: boolean }) {
+function EditableRow({ label, value, onSave, multiline, last }: { label: string; value: string; onSave: (v: string) => Promise<void>; multiline?: boolean; last?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const [error, setError] = useState('');
 
-  // TODO: send the change to the website's "update contact details" API.
-  const save = () => {
-    onSave(draft.trim());
-    setEditing(false);
+  // Saves through POST /api/contact (same rules as the website).
+  const save = async () => {
+    setError('');
+    try {
+      await onSave(draft.trim());
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+    }
   };
 
   return (
@@ -66,8 +83,13 @@ function EditableRow({ label, value, onSave, multiline, last }: { label: string;
             style={[styles.editInput, multiline && { minHeight: 76, textAlignVertical: 'top' }]}
           />
         ) : (
-          <T size={14}>{value}</T>
+          <T size={14}>{value || '—'}</T>
         )}
+        {error ? (
+          <T size={12} color="#9A3B26">
+            {error}
+          </T>
+        ) : null}
       </View>
       <Pressable
         accessibilityRole="button"
@@ -82,16 +104,66 @@ function EditableRow({ label, value, onSave, multiline, last }: { label: string;
   );
 }
 
+/** The real account, in the shapes this screen was designed with. */
+function shape(me: Me) {
+  const member = {
+    initials: me.initials,
+    fullName: me.fullName,
+    memberId: me.memberNo ?? me.reference,
+    type: me.memberType,
+    cohort: me.chapter,
+    city: me.city,
+    since: me.membership?.since ?? '',
+  };
+  const status = (me.status === 'Approved' ? 'Approved' : me.status === 'Info requested' ? 'Information requested' : 'In review') as (typeof steps)[number];
+  const n = me.nominees[0];
+  const account = {
+    status,
+    approvedOn: me.membership?.admittedAt ?? '',
+    joiningFee: {
+      amount: me.country === 'Nigeria' ? '₦10,000' : '£10.00',
+      paid: !!me.payment?.verified,
+      paidOn: me.payment?.datePaid || '—',
+      method: me.payment?.method || '—',
+      paidTo: 'VEKAT Group Ltd',
+      reference: me.payment?.receiptNo || me.payment?.reference || '—',
+    },
+    documents: me.documents.map((d) => ({ id: d.id, title: d.label, detail: `${d.uploadedAt} · ${d.name}`, icon: 'doc' as const })),
+    email: me.email,
+    country: me.country,
+    homeCohort: me.chapter,
+    nominee: n
+      ? {
+          name: n.name,
+          initials: initialsOf(n.name),
+          relation: `${n.relationship} · receives ${n.share}% of shares`,
+          contact: n.contact,
+        }
+      : null,
+  };
+  return { member, account };
+}
+
 export default function MyAccount() {
+  const { me, token, refreshMe } = useSession();
   const [copied, setCopied] = useState(false);
-  const [phone, setPhone] = useState(account.phone);
-  const [address, setAddress] = useState(account.address);
 
   useEffect(() => {
     if (!copied) return;
     const t = setTimeout(() => setCopied(false), 2000);
     return () => clearTimeout(t);
   }, [copied]);
+
+  if (!me) return null; // the tabs only open once the account has loaded
+  const { member, account } = shape(me);
+
+  const saveContact = async (patch: { whatsapp?: string; address?: string }) => {
+    await api('/api/contact', {
+      token,
+      body: { whatsapp: patch.whatsapp ?? me.phone, address: patch.address ?? me.address, city: me.city },
+    });
+    await refreshMe();
+  };
 
   const copy = async () => {
     await Clipboard.setStringAsync(member.memberId);
@@ -149,7 +221,7 @@ export default function MyAccount() {
           </Pressable>
         </View>
         <T size={12} color={colors.mintText}>
-          Member since {member.since} · ID verified
+          {member.since ? `Member since ${member.since}` : ''}
         </T>
       </View>
 
@@ -208,8 +280,13 @@ export default function MyAccount() {
       {/* Documents */}
       <Section title="My documents">
         <View style={{ gap: 10 }}>
+          {account.documents.length === 0 ? (
+            <T size={13} color={colors.muted}>
+              No documents on your record yet.
+            </T>
+          ) : null}
           {account.documents.map((d) => (
-            // TODO: download the PDF from the website's member documents API.
+            // TODO: download the file once the app has a documents download API.
             <Pressable key={d.id} accessibilityRole="button" accessibilityLabel={`Download ${d.title}`} style={[styles.card, styles.docRow]}>
               <View style={styles.docIcon}>
                 <Icon name={d.icon} size={20} color={colors.goldText} strokeWidth={1.8} />
@@ -238,8 +315,8 @@ export default function MyAccount() {
           <View style={[styles.detail, styles.divider]}>
             <Info label="Email" value={account.email} />
           </View>
-          <EditableRow label="Mobile number (WhatsApp)" value={phone} onSave={setPhone} />
-          <EditableRow label="Home address" value={address} onSave={setAddress} multiline />
+          <EditableRow label="Mobile number (WhatsApp)" value={me.phone} onSave={(v) => saveContact({ whatsapp: v })} />
+          <EditableRow label="Home address" value={[me.address, me.city].filter(Boolean).join(', ')} onSave={(v) => saveContact({ address: v })} multiline />
           <View style={[styles.detail, styles.grid]}>
             <Info label="Country you live in" value={account.country} />
             <Info label="Home cohort" value={account.homeCohort} />
@@ -247,7 +324,7 @@ export default function MyAccount() {
         </Card>
         <T size={12} color={colors.muted}>
           To change your name or email,{' '}
-          <TextLink label="contact the office" size={12} color={colors.muted} onPress={() => Linking.openURL(`mailto:${office.email}`)} /> — we’ll need
+          <TextLink label="contact the office" size={12} color={colors.muted} onPress={() => Linking.openURL(`mailto:${OFFICE.email}`)} /> — we’ll need
           to re-check your ID.
         </T>
       </Section>
@@ -257,32 +334,35 @@ export default function MyAccount() {
         title="Nominee"
         action={
           // Nominee changes use the signed form on the website.
-          <TextLink label="Change nominee" onPress={() => Linking.openURL(`${office.website}/app`)} />
+          <TextLink label="Change nominee" onPress={() => Linking.openURL(`${OFFICE.website}/app`)} />
         }>
         <Card style={{ gap: 14 }}>
-          <View style={[styles.between, { justifyContent: 'flex-start', gap: 12 }]}>
-            <View style={[styles.avatar, { backgroundColor: colors.mint, width: 48, height: 48 }]}>
-              <T size={15} weight="bold" color={colors.green}>
-                {n.initials}
-              </T>
+          {n ? (
+            <View style={[styles.between, { justifyContent: 'flex-start', gap: 12 }]}>
+              <View style={[styles.avatar, { backgroundColor: colors.mint, width: 48, height: 48 }]}>
+                <T size={15} weight="bold" color={colors.green}>
+                  {n.initials}
+                </T>
+              </View>
+              <View style={{ flex: 1 }}>
+                <T size={16} weight="semibold">
+                  {n.name}
+                </T>
+                <T size={12} color={colors.muted}>
+                  {n.relation}
+                </T>
+                {n.contact ? (
+                  <T size={12} color={colors.muted}>
+                    {n.contact}
+                  </T>
+                ) : null}
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <T size={16} weight="semibold">
-                {n.name}
-              </T>
-              <T size={12} color={colors.muted}>
-                {n.relation}
-              </T>
-            </View>
-          </View>
-          <View style={styles.grid}>
-            <Info label="Phone" value={n.phone} />
-            <Info label="Lives in" value={n.livesIn} />
-          </View>
-          <View style={styles.grid}>
-            <Info label="Email" value={n.email} />
-            <Info label="Added" value={n.added} />
-          </View>
+          ) : (
+            <T size={13} color={colors.muted}>
+              No nominee on your record yet.
+            </T>
+          )}
           <View style={styles.nomineeNote}>
             <Icon name="shield" size={18} color={colors.green} strokeWidth={1.8} />
             <T size={12} style={{ flex: 1 }}>
