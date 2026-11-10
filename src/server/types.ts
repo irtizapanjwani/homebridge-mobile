@@ -43,7 +43,9 @@ export type MemberDoc = {
   passwordReset?: { tokenHash: string; expiresAt: Date; requestedAt: Date; attempts?: number };
   loginCode?: { hash: string; expiresAt: Date; attempts: number };
   membership?: { memberNo: string; zone: string; seq: number; admittedAt: Date; category?: string };
-  decision?: { reason?: string; at: Date };
+  decision?: { outcome?: MemberStatus; reason?: string; at: Date };
+  /** The new-application email the office got, so later updates thread under it. */
+  officeAlert?: { subject: string; ids: Record<string, string> };
   infoResponse?: { message: string; at: Date; documentIds?: string[] };
   forms?: {
     declaration?: { signedAt: Date; documentId: string };

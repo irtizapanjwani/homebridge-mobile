@@ -14,7 +14,7 @@ import {
 import { recordAudit } from '@/server/audit';
 import { hashPassword, isAuthConfigured, makeToken, members, passwordProblem } from '@/server/auth';
 import { isDbConfigured } from '@/server/db';
-import { emailOffice, isEmailConfigured, sendEmail } from '@/server/email';
+import { isEmailConfigured, sendApplicationConfirmation, sendOfficeAlert } from '@/server/email';
 import { fail, ok, tooMany } from '@/server/http';
 
 /**
@@ -66,41 +66,36 @@ export async function POST(req: Request) {
       after: 'Submitted',
     }).catch(() => {});
 
-    // Emails never fail the application: the reference is on screen either way.
+    // Same emails as the website. They never fail the application: the reference is on screen either way.
     if (isEmailConfigured()) {
-      const first = draft.fullName.split(/\s+/)[0] ?? '';
-      const fee = livesInNigeria(draft) ? '₦10,000' : '£10';
-      const paid = Boolean(draft.datePaid || draft.paymentReference);
       if (email) {
-        const text = supporter
-          ? `Hello ${first},\n\nThank you for joining the HomeBridge Supporter list. Your reference is ${reference}. Please keep it and quote it in any message to us.\n\nThere is nothing to pay. We will send you news a few times a year, and invitations to open events.\n\nHomeBridge Cooperative`
-          : `Hello ${first},\n\nThank you for applying to join HomeBridge Cooperative.\n\nYour application reference: ${reference}\n\nPlease keep it and quote it in any message to us about your application. Your permanent membership number is issued when your application is approved.\n\n` +
-            (paid
-              ? `You told us you paid the joining fee of ${fee}${draft.paymentReference ? `, with the reference ${draft.paymentReference}` : ''}. We will confirm it against our account. There is nothing further for you to do.`
-              : `If you have not paid the joining fee of ${fee} yet, please write ${reference} as the reference (or narration) on your transfer, so we can match your payment to you straight away.`) +
-            `\n\nYou can follow your application in the HomeBridge app or on the website.\n\nHomeBridge Cooperative`;
-        const sent = await sendEmail(email, supporter ? 'You’re on the HomeBridge Supporter list' : `Your HomeBridge application ${reference}`, text);
+        const sent = await sendApplicationConfirmation({
+          to: email,
+          firstName: draft.fullName.split(/\s+/)[0] ?? '',
+          reference,
+          supporter,
+          fee: supporter ? undefined : livesInNigeria(draft) ? '₦10,000' : '£10',
+          paymentReference: draft.paymentReference,
+          paidReported: Boolean(draft.datePaid || draft.paymentReference),
+        });
         if (!sent.ok) console.error('[api/apply] confirmation email not sent:', sent.error);
       }
-      const alert = await emailOffice(
-        `New ${supporter ? 'supporter' : 'application'}: ${draft.fullName} (${reference})`,
-        [
-          `${draft.fullName} has ${supporter ? 'joined the Supporter list' : 'applied'} in the HomeBridge app.`,
-          '',
-          `Reference: ${reference}`,
-          `Email: ${email || '—'}`,
-          `Phone: ${phone || '—'}`,
-          supporter ? '' : `Membership type: ${TYPE_LABEL[draft.memberType] ?? draft.memberType}`,
-          `Country: ${countryName(draft)}`,
-          `Chapter: ${draft.chapter}`,
-          supporter ? '' : `Joining fee: ${draft.paymentMethod}`,
-          '',
-          'Open the admin panel to review it.',
-        ]
-          .filter((l) => l !== '')
-          .join('\n'),
-      );
+      const alert = await sendOfficeAlert({
+        reference,
+        fullName: draft.fullName,
+        kind: supporter ? 'Supporter' : 'Application',
+        email,
+        phone,
+        memberType: TYPE_LABEL[draft.memberType] ?? draft.memberType,
+        country: countryName(draft),
+        chapter: draft.chapter,
+        paymentMethod: draft.paymentMethod,
+      });
       if (!alert.ok) console.error('[api/apply] office alert not sent:', alert.error);
+      // Kept so a later reply from this applicant lands in the same email conversation (as on the website).
+      if (alert.thread && Object.keys(alert.thread.ids).length) {
+        await (await members()).updateOne({ reference }, { $set: { officeAlert: alert.thread } }).catch(() => {});
+      }
     }
 
     return ok({ reference, status: supporter ? 'Supporter' : 'Submitted', ...makeToken(reference) });

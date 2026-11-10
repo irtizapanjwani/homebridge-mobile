@@ -8,7 +8,7 @@
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 
 import { findMemberByLogin, hashPassword, members } from './auth';
-import { sendEmail } from './email';
+import { sendPasswordResetCode } from './email';
 
 export const CODE_TTL_MS = 15 * 60_000;
 const MAX_TRIES = 5;
@@ -24,12 +24,7 @@ export async function startReset(login: string) {
     { reference: m.reference },
     { $set: { passwordReset: { tokenHash: hashOf(m.reference, code), expiresAt: new Date(Date.now() + CODE_TTL_MS), requestedAt: new Date(), attempts: 0 } } },
   );
-  const first = m.fullName.trim().split(/\s+/)[0] ?? '';
-  const sent = await sendEmail(
-    m.email,
-    `Your HomeBridge code: ${code}`,
-    `Hello ${first || 'there'},\n\nYour code to reset your HomeBridge password is:\n\n${code}\n\nType it in the HomeBridge app within 15 minutes. If you didn't ask for this, you can ignore this email — your password hasn't changed.\n\nHomeBridge Cooperative`,
-  );
+  const sent = await sendPasswordResetCode({ to: m.email, firstName: m.fullName.trim().split(/\s+/)[0] ?? '', code, minutes: CODE_TTL_MS / 60_000 });
   if (!sent.ok) console.error('[reset] code email not sent:', sent.error);
 }
 

@@ -11,7 +11,7 @@ import {
   saveDocument,
   type UploadType,
 } from '@/server/documents';
-import { emailOffice } from '@/server/email';
+import { sendInfoReplyAlert } from '@/server/email';
 import { fail, ok } from '@/server/http';
 
 const OPEN = ['Submitted', 'In review', 'Info requested'];
@@ -86,13 +86,16 @@ export async function POST(req: Request) {
           before: 'Info requested',
           after: 'In review',
         });
-        const sent = await emailOffice(
-          `Reply received: ${member.fullName} (${ref})`,
-          `${member.fullName} (${ref}) has replied to your request for more information in the HomeBridge app.\n\n` +
-            (message ? `Their message:\n${message}\n\n` : '') +
-            (documentId ? 'They attached a file — open it in the admin panel under Applications.\n' : '') +
-            'The application is back in review.',
-        );
+        const sent = await sendInfoReplyAlert({
+          reference: ref,
+          fullName: member.fullName,
+          email: member.email,
+          asked: member.decision?.outcome === 'Info requested' ? member.decision.reason : undefined,
+          message,
+          withFile: Boolean(documentId),
+          thread: member.officeAlert,
+          kind: member.supporter ? 'Supporter' : 'Application',
+        }).catch((err) => ({ ok: false as const, error: err instanceof Error ? err.message : 'unknown error' }));
         await recordAudit({
           action: sent.ok ? 'email.info_reply_alert_sent' : 'email.info_reply_alert_failed',
           actor: 'System',

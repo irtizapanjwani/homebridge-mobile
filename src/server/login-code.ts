@@ -7,7 +7,7 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 
 import { members } from './auth';
-import { sendEmail } from './email';
+import { sendLoginCode } from './email';
 
 const CODE_MINUTES = 10;
 const MAX_TRIES = 5;
@@ -29,22 +29,7 @@ export async function requestLoginCode(email: string) {
     { reference: m.reference },
     { $set: { loginCode: { hash: hashCode(m.reference, code), expiresAt: new Date(Date.now() + CODE_MINUTES * 60_000), attempts: 0 } } },
   );
-  const name = m.firstName?.trim() || m.fullName.trim().split(/\s+/)[0] || 'there';
-  const sent = await sendEmail(
-    m.email,
-    `Your HomeBridge sign-in code: ${code}`,
-    [
-      `Hello ${name},`,
-      '',
-      `Your HomeBridge sign-in code is: ${code}`,
-      '',
-      `Enter it on the sign-in page within ${CODE_MINUTES} minutes. It works once.`,
-      '',
-      'If you did not ask to sign in, you can ignore this email. Nobody can use the code unless they can read this inbox.',
-      '',
-      'HomeBridge Cooperative',
-    ].join('\n'),
-  );
+  const sent = await sendLoginCode({ to: m.email, firstName: m.firstName?.trim() || m.fullName.trim().split(/\s+/)[0] || '', code, minutes: CODE_MINUTES });
   if (!sent.ok) console.error('[login-code] code email not sent:', sent.error);
 }
 
