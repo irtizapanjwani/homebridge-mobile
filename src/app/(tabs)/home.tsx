@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { CopyButton, HelpCard } from '@/components/applicant';
+import { DashboardHeader } from '@/components/dashboard-header';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
@@ -14,11 +15,6 @@ import { useSession, type Me } from '@/lib/session';
 // next meeting (with a popup until they reply), HomeBridge at a glance, help, and their record.
 
 const WEBSITE = 'https://homebridge-two.vercel.app';
-
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
 
 function Card({ children, style }: { children: ReactNode; style?: object }) {
   return <View style={[styles.card, style]}>{children}</View>;
@@ -572,29 +568,12 @@ export default function Home() {
 
   return (
     <Screen withTabBar contentStyle={{ gap: 14 }}>
-      {/* Welcome */}
-      <View style={{ gap: 6, marginTop: 4 }}>
-        <View style={styles.chip}>
-          <T size={12} weight="semibold" color={colors.goldText}>
-            Member
-          </T>
-          <T size={12} color={colors.green} numberOfLines={1} style={{ flexShrink: 1 }}>
-            {[me.memberType, me.chapter].filter(Boolean).join(' · ')}
-          </T>
-        </View>
-        <T serif size={30} color={colors.green}>
-          {greeting()}
-          {me.firstName ? ', ' : '.'}
-          {me.firstName ? (
-            <T serif size={30} color={colors.goldText}>
-              {me.firstName}.
-            </T>
-          ) : null}
-        </T>
-        <T size={14} color={colors.inkSoft}>
-          Here’s your membership at a glance — contributions, meetings and votes are all below.
-        </T>
-      </View>
+      <DashboardHeader
+        firstName={me.firstName}
+        initials={me.initials}
+        avatarLabel="Open my profile"
+        onAvatar={() => router.push('/profile')}
+      />
 
       <MembershipCard me={me} />
       <Stats me={me} />
@@ -641,19 +620,6 @@ const styles = StyleSheet.create({
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 18, padding: 16 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    maxWidth: '100%',
-  },
   cardBackdrop: {
     position: 'absolute',
     top: 6,

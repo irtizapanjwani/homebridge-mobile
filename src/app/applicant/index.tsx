@@ -3,16 +3,12 @@ import { useCallback } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { Card, CopyButton, docsOf, ErrorBox, HelpCard, OFFICE_WHATSAPP, OPEN_STATUSES, stagesFor } from '@/components/applicant';
+import { DashboardHeader } from '@/components/dashboard-header';
 import { Icon, type IconName } from '@/components/icon';
 import { Button, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
 import { useSession, type Me } from '@/lib/session';
 import { Linking } from 'react-native';
-
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
 
 /** One clear next step, with a button when there's something to do. */
 function nextStep(me: Me): { title: string; text: string; tone: 'act' | 'wait' | 'stop'; action?: { label: string; go: () => void } } {
@@ -108,29 +104,12 @@ export default function ApplicantDashboard() {
 
   return (
     <Screen contentStyle={{ gap: 16 }}>
-      {/* Greeting */}
-      <View style={{ gap: 6, marginTop: 4 }}>
-        <View style={styles.chip}>
-          <T size={12} weight="semibold" color={colors.goldText}>
-            Applicant
-          </T>
-          <T size={12} color={colors.green} numberOfLines={1} style={{ flexShrink: 1 }}>
-            {[me.memberType, me.chapter].filter(Boolean).join(' · ') || 'HomeBridge Cooperative'}
-          </T>
-        </View>
-        <T serif size={30} color={colors.green}>
-          {greeting()}
-          {me.firstName ? ', ' : '.'}
-          {me.firstName ? (
-            <T serif size={30} color={colors.goldText}>
-              {me.firstName}.
-            </T>
-          ) : null}
-        </T>
-        <T size={14} color={colors.inkSoft}>
-          Here’s where your application is, and what happens next.
-        </T>
-      </View>
+      <DashboardHeader
+        firstName={me.firstName}
+        initials={me.initials}
+        avatarLabel="Open my application"
+        onAvatar={() => router.push('/applicant/application')}
+      />
 
       {/* Reference + status */}
       <View style={styles.refCard}>
@@ -282,19 +261,6 @@ export default function ApplicantDashboard() {
 
 const styles = StyleSheet.create({
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    maxWidth: '100%',
-  },
   refCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: colors.green, borderRadius: 20, padding: 16 },
   status: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 },
   next: { borderWidth: 1, borderColor: colors.mint, backgroundColor: colors.mint, borderRadius: 18, padding: 16, gap: 6 },
