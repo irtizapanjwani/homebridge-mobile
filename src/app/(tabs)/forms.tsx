@@ -5,13 +5,16 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ErrorBox } from '@/components/applicant';
 import { Checkbox, Field, Input } from '@/components/form';
 import { Icon } from '@/components/icon';
-import { SignaturePad } from '@/components/signature-pad';
+import { SignaturePad, type Signature } from '@/components/signature-pad';
 import { BackButton, Button, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
+import { api } from '@/lib/api';
+import { openDownload } from '@/lib/download';
 import { useSession } from '@/lib/session';
 
 // Membership forms, signed on the phone — same wording as the website (lib/forms-text.ts).
-// Screens only for now: signing shows a confirmation but isn't saved yet (TODO: app API).
+// Signing sends the answers and the drawn signature to the app API, which makes the same signed PDF
+// as the website and stores it on the member's record.
 
 const DECLARATION = [
   'The information I gave in my application is true and complete, and I will tell HomeBridge promptly if it changes.',
@@ -28,20 +31,33 @@ const PHOTO_CONSENT = 'I agree that photographs of me taken at HomeBridge events
 
 type Row = { name: string; relationship: string; phone: string; email: string; address: string; share: string };
 
-function DeclarationForm({ name, onDone }: { name: string; onDone: () => void }) {
+const EMPTY_SIG: Signature = { paths: [], width: 0, height: 0 };
+const failText = (e: unknown) => (e instanceof Error ? e.message : 'We could not save your form. Please try again.');
+
+function DeclarationForm({ name, onDone }: { name: string; onDone: () => void | Promise<void> }) {
+  const { token } = useSession();
+  const [busy, setBusy] = useState(false);
   const [ticks, setTicks] = useState<boolean[]>(DECLARATION.map(() => false));
   const [photo, setPhoto] = useState(false);
   const [signer, setSigner] = useState(name);
-  const [sig, setSig] = useState<string[]>([]);
+  const [sig, setSig] = useState<Signature>(EMPTY_SIG);
   const [error, setError] = useState('');
-  const onSig = useCallback((p: string[]) => setSig(p), []);
+  const onSig = useCallback((p: Signature) => setSig(p), []);
 
-  const sign = () => {
+  const sign = async () => {
     if (!ticks.every(Boolean)) return setError('Tick every statement to confirm it.');
     if (signer.trim().length < 3) return setError('Type your full name.');
-    if (!sig.length) return setError('Sign in the box.');
+    if (!sig.paths.length) return setError('Sign in the box.');
     setError('');
-    onDone(); // TODO: save through the app API (creates the signed PDF like the website)
+    setBusy(true);
+    try {
+      await api('/api/forms/declaration', { token, body: { agreed: ticks, photoConsent: photo, signerName: signer.trim(), signature: sig } });
+      await onDone();
+    } catch (e) {
+      setError(failText(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -71,35 +87,56 @@ function DeclarationForm({ name, onDone }: { name: string; onDone: () => void })
       </Field>
       <SignaturePad label="Your signature" onChange={onSig} />
       {error ? <ErrorBox text={error} /> : null}
-      <Button label="Sign the declaration" onPress={sign} />
+      <Button label={busy ? 'Saving…' : 'Sign the declaration'} variant={busy ? 'disabled' : 'primary'} onPress={sign} />
     </View>
   );
 }
 
-function NomineeForm({ defaults, onDone }: { defaults: Row[]; onDone: () => void }) {
+function NomineeForm({ defaults, onDone }: { defaults: Row[]; onDone: () => void | Promise<void> }) {
+  const { token } = useSession();
+  const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<Row[]>(defaults.length ? defaults : [{ name: '', relationship: '', phone: '', email: '', address: '', share: '100' }]);
   const [survivor, setSurvivor] = useState('');
   const [witnessName, setWitnessName] = useState('');
   const [witnessAddress, setWitnessAddress] = useState('');
   const [witnessAdult, setWitnessAdult] = useState(false);
-  const [sig, setSig] = useState<string[]>([]);
-  const [wsig, setWsig] = useState<string[]>([]);
+  const [sig, setSig] = useState<Signature>(EMPTY_SIG);
+  const [wsig, setWsig] = useState<Signature>(EMPTY_SIG);
   const [error, setError] = useState('');
-  const onSig = useCallback((p: string[]) => setSig(p), []);
-  const onWsig = useCallback((p: string[]) => setWsig(p), []);
+  const onSig = useCallback((p: Signature) => setSig(p), []);
+  const onWsig = useCallback((p: Signature) => setWsig(p), []);
   const total = rows.reduce((t, r) => t + (Number(r.share) || 0), 0);
   const upd = (i: number, patch: Partial<Row>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
-  const sign = () => {
+  const sign = async () => {
     if (rows.some((r) => r.name.trim().length < 2 || r.relationship.trim().length < 2 || (!r.phone.trim() && !r.email.trim())))
       return setError('Give each nominee a name, relationship and a phone or email.');
     if (total !== 100) return setError('The shares must add up to 100%.');
-    if (!sig.length) return setError('Sign in your box.');
+    if (!sig.paths.length) return setError('Sign in your box.');
     if (witnessName.trim().length < 3 || witnessAddress.trim().length < 5) return setError('Add your witness’s name and address.');
     if (!witnessAdult) return setError('Confirm your witness is 18 or over and not a nominee.');
-    if (!wsig.length) return setError('Ask your witness to sign in their box.');
+    if (!wsig.paths.length) return setError('Ask your witness to sign in their box.');
     setError('');
-    onDone(); // TODO: save through the app API
+    setBusy(true);
+    try {
+      await api('/api/forms/nominee', {
+        token,
+        body: {
+          nominees: rows.map((r) => ({ ...r, share: Number(r.share) || 0 })),
+          survivorInstruction: survivor,
+          witnessName: witnessName.trim(),
+          witnessAddress: witnessAddress.trim(),
+          witnessAdult,
+          signature: sig,
+          witnessSignature: wsig,
+        },
+      });
+      await onDone();
+    } catch (e) {
+      setError(failText(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -186,15 +223,20 @@ function NomineeForm({ defaults, onDone }: { defaults: Row[]; onDone: () => void
         <SignaturePad label="Witness signature" onChange={onWsig} />
       </View>
       {error ? <ErrorBox text={error} /> : null}
-      <Button label="Sign the nominee form" onPress={sign} />
+      <Button label={busy ? 'Saving…' : 'Sign the nominee form'} variant={busy ? 'disabled' : 'primary'} onPress={sign} />
     </View>
   );
 }
 
 export default function MembershipForms() {
-  const { me } = useSession();
+  const { me, token, refreshMe } = useSession();
   const [open, setOpen] = useState<'declaration' | 'nominee' | null>(null);
   const [signedNow, setSignedNow] = useState<{ declaration?: boolean; nominee?: boolean }>({});
+  const [dlError, setDlError] = useState('');
+  const download = (form: 'declaration' | 'nominee') => {
+    setDlError('');
+    openDownload(token, { kind: 'form', form }).catch((e) => setDlError(e instanceof Error ? e.message : 'Could not open the form.'));
+  };
   if (!me?.forms) return null;
   const f = me.forms;
   const defaults: Row[] = me.nominees.map((n) => ({
@@ -241,22 +283,32 @@ export default function MembershipForms() {
               {open === it.key ? 'Close' : it.signed ? 'Sign again' : 'Fill in and sign'}
             </T>
           </Pressable>
+          {it.signed && open !== it.key ? (
+            <Pressable accessibilityRole="button" onPress={() => download(it.key)} style={styles.copy}>
+              <Icon name="download" size={16} color={colors.green} strokeWidth={2} />
+              <T size={13} weight="semibold" color={colors.green}>
+                Download my signed copy (PDF)
+              </T>
+            </Pressable>
+          ) : null}
           {open === it.key ? (
             <View style={{ paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.lineSoft, marginTop: 12 }}>
               {it.key === 'declaration' ? (
                 <DeclarationForm
                   name={me.fullName}
-                  onDone={() => {
+                  onDone={async () => {
                     setSignedNow({ ...signedNow, declaration: true });
                     setOpen(null);
+                    await refreshMe();
                   }}
                 />
               ) : (
                 <NomineeForm
                   defaults={defaults}
-                  onDone={() => {
+                  onDone={async () => {
                     setSignedNow({ ...signedNow, nominee: true });
                     setOpen(null);
+                    await refreshMe();
                   }}
                 />
               )}
@@ -264,6 +316,7 @@ export default function MembershipForms() {
           ) : null}
         </View>
       ))}
+      {dlError ? <ErrorBox text={dlError} /> : null}
     </Screen>
   );
 }
@@ -273,6 +326,7 @@ const styles = StyleSheet.create({
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 18, padding: 14 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  copy: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.lineSoft, minHeight: 40 },
   icon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center' },
   optional: { backgroundColor: colors.mint, borderRadius: 12, padding: 10 },
   nominee: { borderWidth: 1, borderColor: colors.line, borderRadius: 14, padding: 12, gap: 10 },

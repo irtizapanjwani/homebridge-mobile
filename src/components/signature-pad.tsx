@@ -5,9 +5,13 @@ import Svg, { Path } from 'react-native-svg';
 import { T } from '@/components/ui';
 import { colors } from '@/constants/theme';
 
-/** Sign with a finger (or mouse). Reports whether anything has been drawn, and the strokes as SVG paths. */
-export function SignaturePad({ label, onChange }: { label: string; onChange: (paths: string[]) => void }) {
+/** What the pad reports: the strokes as SVG paths, and the box size they were drawn in. */
+export type Signature = { paths: string[]; width: number; height: number };
+
+/** Sign with a finger (or mouse). Reports the strokes so the server can draw them onto the signed PDF. */
+export function SignaturePad({ label, onChange }: { label: string; onChange: (sig: Signature) => void }) {
   const [paths, setPaths] = useState<string[]>([]);
+  const [size, setSize] = useState({ width: 320, height: 140 });
   const pathsRef = useRef<string[]>([]);
   const current = useRef('');
   const [live, setLive] = useState('');
@@ -41,8 +45,8 @@ export function SignaturePad({ label, onChange }: { label: string; onChange: (pa
 
   // Tell the form after React has finished rendering, never during it.
   useEffect(() => {
-    onChange(paths);
-  }, [paths, onChange]);
+    onChange({ paths, ...size });
+  }, [paths, size, onChange]);
 
   return (
     <View style={{ gap: 6 }}>
@@ -64,7 +68,10 @@ export function SignaturePad({ label, onChange }: { label: string; onChange: (pa
           </Pressable>
         ) : null}
       </View>
-      <View style={styles.pad} {...responder.panHandlers} accessibilityLabel={`${label} box. Sign with your finger.`}>
+      <View
+        style={styles.pad}
+        onLayout={(e) => setSize({ width: Math.round(e.nativeEvent.layout.width), height: Math.round(e.nativeEvent.layout.height) })}
+        {...responder.panHandlers} accessibilityLabel={`${label} box. Sign with your finger.`}>
         <Svg width="100%" height="100%" pointerEvents="none">
           {[...paths, live].filter(Boolean).map((d, i) => (
             <Path key={i} d={d} stroke={colors.ink} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />

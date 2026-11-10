@@ -6,18 +6,24 @@ import { ListPicker } from '@/components/form';
 import { Icon } from '@/components/icon';
 import { BackButton, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
+import { openDownload, type DownloadRequest } from '@/lib/download';
 import { useSession } from '@/lib/session';
 
 const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
 
+type Month = string; // "November 2026"
+const keyOf: Record<string, string> = {}; // label → YYYY-MM
+
 /** Months from joining until now, newest first, for the statement range. */
 function monthsSince(admittedAt?: string) {
-  const months: string[] = [];
+  const months: Month[] = [];
   const start = admittedAt ? new Date(`${admittedAt} 12:00`) : new Date();
   const d = new Date();
   d.setDate(1);
   for (let i = 0; i < 36; i++) {
-    months.push(MONTH.format(d));
+    const label = MONTH.format(d);
+    keyOf[label] = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    months.push(label);
     if (!isNaN(start.getTime()) && d.getFullYear() === start.getFullYear() && d.getMonth() === start.getMonth()) break;
     d.setMonth(d.getMonth() - 1);
   }
@@ -26,8 +32,9 @@ function monthsSince(admittedAt?: string) {
 
 /** Payment history: every contribution with its receipt, and statements to download. */
 export default function Payments() {
-  const { me } = useSession();
+  const { me, token } = useSession();
   const [note, setNote] = useState('');
+  const [busy, setBusy] = useState('');
   const months = monthsSince(me?.membership?.admittedAt);
   const [from, setFrom] = useState(months[months.length - 1]);
   const [to, setTo] = useState(months[0]);
@@ -41,8 +48,22 @@ export default function Payments() {
     byYear.set(y, [...(byYear.get(y) ?? []), i]);
   }
 
-  // TODO: download from the app API (PDF/CSV statement, receipt PDFs).
-  const download = (what: string) => setNote(`${what} downloads are coming soon in the app. You can download them on the website for now.`);
+  const download = async (id: string, req: DownloadRequest) => {
+    setNote('');
+    setBusy(id);
+    try {
+      await openDownload(token, req);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'Could not open that just now. Please try again.');
+    } finally {
+      setBusy('');
+    }
+  };
+  const statement = (format: 'pdf' | 'csv') => {
+    let [a, b] = [keyOf[from], keyOf[to]];
+    if (a > b) [a, b] = [b, a];
+    download(format, { kind: 'statement', from: a, to: b, format });
+  };
 
   return (
     <Screen withTabBar contentStyle={{ gap: 16 }}>
@@ -91,17 +112,17 @@ export default function Payments() {
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          {['PDF', 'CSV'].map((f) => (
-            <Pressable key={f} accessibilityRole="button" onPress={() => download(`${f} statement`)} style={styles.dl}>
+          {(['pdf', 'csv'] as const).map((f) => (
+            <Pressable key={f} accessibilityRole="button" disabled={!!busy} onPress={() => statement(f)} style={styles.dl}>
               <Icon name="download" size={16} color={colors.green} strokeWidth={2} />
               <T size={14} weight="semibold" color={colors.green}>
-                {f}
+                {busy === f ? 'Opening…' : f.toUpperCase()}
               </T>
             </Pressable>
           ))}
         </View>
         {note ? (
-          <T size={12} color={colors.goldText}>
+          <T size={12} color="#9A3B26">
             {note}
           </T>
         ) : null}
@@ -136,7 +157,7 @@ export default function Payments() {
                       Received {i.paidAt} · {i.receiptNo}
                     </T>
                   </View>
-                  <Pressable accessibilityRole="button" accessibilityLabel={`Download receipt ${i.receiptNo}`} onPress={() => download('Receipt')} hitSlop={8}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Download receipt ${i.receiptNo}`} disabled={!!busy} onPress={() => download(i.receiptNo, { kind: 'contribution', receiptNo: i.receiptNo })} hitSlop={8}>
                     <Icon name="download" size={20} color={colors.green} strokeWidth={2} />
                   </Pressable>
                 </View>

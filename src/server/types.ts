@@ -35,7 +35,9 @@ export type MemberDoc = {
     datePaid: string;
     reference: string;
     receiptNo?: string;
+    verifiedAt?: Date | null;
   };
+  updatedAt?: Date;
   nominees: { name: string; relationship: string; contact: string; share: number }[];
   passwordHash?: string;
   passwordReset?: { tokenHash: string; expiresAt: Date; requestedAt: Date; attempts?: number };
@@ -58,6 +60,8 @@ export type ContributionDoc = {
   currency: Currency;
   period: string; // YYYY-MM
   paidAt: Date;
+  bankRef?: string;
+  memberName?: string;
 };
 
 export type DocumentMeta = {

@@ -8,6 +8,7 @@ import { CheckBadge, Icon } from '@/components/icon';
 import { BackButton, Pill, Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { openDownload, type DownloadRequest } from '@/lib/download';
 import { useSession, type Me } from '@/lib/session';
 
 const OFFICE = { email: 'info@homebridgecooperative.org', website: 'https://homebridge-two.vercel.app' };
@@ -128,7 +129,24 @@ function shape(me: Me) {
       paidTo: 'VEKAT Group Ltd',
       reference: me.payment?.receiptNo || me.payment?.reference || '—',
     },
-    documents: me.documents.map((d) => ({ id: d.id, title: d.label, detail: `${d.uploadedAt} · ${d.name}`, icon: 'doc' as const })),
+    // Downloadable: certificate, joining fee receipt and signed forms. ID photos stay on file only —
+    // the website never sends ID documents back out either.
+    documents: [
+      ...(me.memberNo ? [{ id: 'certificate', title: 'Membership certificate', detail: `PDF · ${me.memberNo}`, icon: 'doc' as const, req: { kind: 'certificate' } as DownloadRequest }] : []),
+      ...(me.payment?.receiptNo ? [{ id: 'receipt', title: 'Joining fee receipt', detail: `PDF · ${me.payment.receiptNo}`, icon: 'doc' as const, req: { kind: 'receipt' } as DownloadRequest }] : []),
+      ...me.documents.map((d) => ({
+        id: d.id,
+        title: d.label,
+        detail: `${d.uploadedAt} · ${d.name}`,
+        icon: 'doc' as const,
+        req:
+          d.type === 'declaration'
+            ? ({ kind: 'form', form: 'declaration' } as DownloadRequest)
+            : d.type === 'nominee_form'
+              ? ({ kind: 'form', form: 'nominee' } as DownloadRequest)
+              : null,
+      })),
+    ],
     email: me.email,
     country: me.country,
     homeCohort: me.chapter,
@@ -147,6 +165,11 @@ function shape(me: Me) {
 export default function MyAccount() {
   const { me, token, refreshMe } = useSession();
   const [copied, setCopied] = useState(false);
+  const [docError, setDocError] = useState('');
+  const openDoc = (req: DownloadRequest) => {
+    setDocError('');
+    openDownload(token, req).catch((e) => setDocError(e instanceof Error ? e.message : 'Could not open that just now.'));
+  };
 
   useEffect(() => {
     if (!copied) return;
@@ -286,8 +309,13 @@ export default function MyAccount() {
             </T>
           ) : null}
           {account.documents.map((d) => (
-            // TODO: download the file once the app has a documents download API.
-            <Pressable key={d.id} accessibilityRole="button" accessibilityLabel={`Download ${d.title}`} style={[styles.card, styles.docRow]}>
+            <Pressable
+              key={d.id}
+              accessibilityRole="button"
+              accessibilityLabel={d.req ? `Download ${d.title}` : `${d.title}, on file`}
+              disabled={!d.req}
+              onPress={() => d.req && openDoc(d.req)}
+              style={[styles.card, styles.docRow]}>
               <View style={styles.docIcon}>
                 <Icon name={d.icon} size={20} color={colors.goldText} strokeWidth={1.8} />
               </View>
@@ -299,9 +327,20 @@ export default function MyAccount() {
                   {d.detail}
                 </T>
               </View>
-              <Icon name="download" size={20} color={colors.green} strokeWidth={2} />
+              {d.req ? (
+                <Icon name="download" size={20} color={colors.green} strokeWidth={2} />
+              ) : (
+                <T size={12} color={colors.muted}>
+                  On file
+                </T>
+              )}
             </Pressable>
           ))}
+          {docError ? (
+            <T size={13} color="#9A3B26">
+              {docError}
+            </T>
+          ) : null}
         </View>
       </Section>
 
