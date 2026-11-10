@@ -46,7 +46,7 @@ export default function Register() {
   const home = type === 'home';
 
   const { draft, set, reset } = useRegister();
-  const { name, code, phone, email, contactMethod, password, passwordConfirm, country, cohort, agreed } = draft;
+  const { name, code, phone, email, contactMethod, password, passwordConfirm } = draft;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   // Same check as the website: 10 to 15 digits with the country code.
   const phoneOk = /^\d{10,15}$/.test((code + phone).replace(/\D/g, '').replace(/^0+/, ''));
@@ -65,7 +65,6 @@ export default function Register() {
     !emailOk && 'type your email address',
     !passwordOk && `choose a password of at least ${MIN_PASSWORD_LENGTH} characters`,
     passwordOk && !matchOk && 'type the same password twice',
-    !agreed && 'tick the box to agree to the bye-laws',
   ].filter(Boolean) as string[];
   const canContinue = missing.length === 0;
 
@@ -104,7 +103,7 @@ export default function Register() {
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 16 }}>
-      <StepHeader step={1} title="Your details" />
+      <StepHeader step={1} title="Your account" />
 
       <View style={{ gap: 4 }}>
         <T serif size={26} color={colors.green}>
@@ -176,63 +175,7 @@ export default function Register() {
           <Input value={name} onChangeText={(v) => set({ name: v })} placeholder="e.g. Ada Okafor" autoComplete="name" />
         </Field>
         {contactMethod === 'phone' ? emailField : phoneField}
-        <View style={styles.row}>
-          <Field label="Country you live in" flex>
-            <Select
-              label="Country"
-              value={country}
-              options={['United Kingdom', 'Nigeria', 'Ghana', 'United States']}
-              onChange={(v) => set({ country: v })}
-            />
-          </Field>
-          <Field label="Home cohort" flex>
-            <Select label="Home cohort" value={cohort} options={['Edo', 'Abuja (FCT)', 'Other state']} onChange={(v) => set({ cohort: v })} />
-          </Field>
-        </View>
       </View>
-
-      <View style={styles.next}>
-        <T size={13} weight="semibold" color={colors.green}>
-          Next steps
-        </T>
-        {[
-          home
-            ? 'Verify ID — BVN or NIN, plus a photo of your ID and proof of address.'
-            : 'Verify ID — Non-Resident BVN or passport, plus a photo of your ID and proof of address.',
-          `Pay the ${home ? '₦10,000' : '£10'} joining fee to VEKAT Group Ltd, the cooperative’s manager.`,
-          'Get your member ID and set up your monthly contribution.',
-        ].map((text, i) => (
-          <View key={i} style={{ flexDirection: 'row', gap: 8 }}>
-            <T size={13} weight="bold" color={colors.green}>
-              {i + 2}
-            </T>
-            <T size={13} style={{ flex: 1 }}>
-              {text}
-            </T>
-          </View>
-        ))}
-      </View>
-
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: agreed }}
-        onPress={() => set({ agreed: !agreed })}
-        style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-        <View style={[styles.checkbox, agreed && { backgroundColor: colors.green, borderColor: colors.green }]}>
-          {agreed && (
-            <Svg width={14} height={14} viewBox="0 0 24 24">
-              <Path d="M5 12l5 5L19 7" stroke={colors.white} strokeWidth={3.5} fill="none" strokeLinecap="round" />
-            </Svg>
-          )}
-        </View>
-        <T size={13} style={{ flex: 1 }}>
-          I agree to the{' '}
-          <T size={13} color={colors.green} weight="medium" style={{ textDecorationLine: 'underline' }}>
-            HomeBridge bye-laws
-          </T>{' '}
-          and the one-member-one-vote rule.
-        </T>
-      </Pressable>
 
       <View style={{ marginTop: 'auto', gap: 8 }}>
         {!canContinue && (
@@ -243,7 +186,7 @@ export default function Register() {
         <Button
           label="Continue"
           variant={canContinue ? 'primary' : 'disabled'}
-          onPress={() => router.push('/register/verify-id')}
+          onPress={() => router.push('/register/about-you')}
         />
       </View>
     </Screen>

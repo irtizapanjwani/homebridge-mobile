@@ -52,11 +52,11 @@ export default function JoiningFee() {
   const ngnFee = `₦${JOINING_FEE.ngn.toLocaleString('en-GB')}`;
 
   // TODO: card → open the Stripe payment link with the applicant's reference; bank → save date/reference to the website.
-  const next = () => router.push('/register/done');
+  const next = () => router.push('/register/check');
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 16 }}>
-      <StepHeader step={3} title="Joining fee" />
+      <StepHeader step={6} title="Joining fee" />
 
       <View style={{ gap: 4 }}>
         <T serif size={26} color={colors.green}>

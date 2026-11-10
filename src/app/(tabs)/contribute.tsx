@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { PaymentHolidaySheet, ProofOfPaymentSheet } from '@/components/member-popups';
 import { BackButton, Button, Radio, Screen, T, Toggle } from '@/components/ui';
 import { colors } from '@/constants/theme';
 
@@ -33,6 +34,8 @@ export default function Contribute() {
   const [amt, setAmt] = useState(0);
   const [method, setMethod] = useState(0);
   const [auto, setAuto] = useState(true);
+  const [proofOpen, setProofOpen] = useState(false);
+  const [holidayOpen, setHolidayOpen] = useState(false);
 
   const c = config[cur];
   const fmt = (n: number) => c.symbol + n.toLocaleString('en-GB');
@@ -153,6 +156,14 @@ export default function Contribute() {
         label={`Pay ${fmt(c.amounts[amt])}${auto ? ' monthly' : ' now'}`}
         style={{ marginTop: 'auto' }}
       />
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Button label="I’ve paid — send proof" variant="mint" height={48} textSize={13} style={{ flex: 1 }} onPress={() => setProofOpen(true)} />
+        <Button label="Payment holiday" variant="mint" height={48} textSize={13} style={{ flex: 1 }} onPress={() => setHolidayOpen(true)} />
+      </View>
+
+      <ProofOfPaymentSheet visible={proofOpen} onClose={() => setProofOpen(false)} currency={cur} />
+      <PaymentHolidaySheet visible={holidayOpen} onClose={() => setHolidayOpen(false)} />
     </Screen>
   );
 }

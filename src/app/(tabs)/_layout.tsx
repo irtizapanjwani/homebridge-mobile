@@ -24,7 +24,7 @@ function TabBar({ state, navigateToTab, insets }: BottomTabBarProps) {
         if (!tab) return null;
         const current = state.routes[state.index]?.name;
         // My account sits under Profile, so keep the Profile tab lit there.
-        const active = state.index === index || (route.name === 'profile' && current === 'account');
+        const active = state.index === index || (route.name === 'profile' && current === 'account') || (route.name === 'home' && (current === 'forms' || current === 'payments'));
         const color = active ? colors.green : colors.muted;
         return (
           <Pressable
@@ -65,6 +65,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="vote" />
       <Tabs.Screen name="profile" />
       <Tabs.Screen name="account" />
+      <Tabs.Screen name="forms" />
+      <Tabs.Screen name="payments" />
     </Tabs>
   );
 }

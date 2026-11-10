@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { CopyButton, HelpCard } from '@/components/applicant';
 import { DashboardHeader } from '@/components/dashboard-header';
+import { ProxySheet } from '@/components/member-popups';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
@@ -13,8 +14,6 @@ import { useSession, type Me } from '@/lib/session';
 // The member dashboard — the same sections, in the same order, as the website's /app page for
 // approved members: welcome + membership card, four figures, forms, contributions, votes, ideas,
 // next meeting (with a popup until they reply), HomeBridge at a glance, help, and their record.
-
-const WEBSITE = 'https://homebridge-two.vercel.app';
 
 function Card({ children, style }: { children: ReactNode; style?: object }) {
   return <View style={[styles.card, style]}>{children}</View>;
@@ -131,7 +130,7 @@ function FormsCard({ me }: { me: Me }) {
     <Card style={{ borderColor: colors.gold, gap: 10 }}>
       <CardTitle>Your membership forms</CardTitle>
       <T size={13} color={colors.inkSoft}>
-        Please sign your forms by {f.dueBy}. You can do it online — no printing needed.
+        Please sign your forms by {f.dueBy}. You can do it here — no printing needed.
       </T>
       {rows.map((r) => (
         <View key={r.label} style={styles.formRow}>
@@ -147,7 +146,7 @@ function FormsCard({ me }: { me: Me }) {
         </View>
       ))}
       {/* Signing uses the website's signature pad. */}
-      <SmallButton label="Sign on the website" primary onPress={() => Linking.openURL(`${WEBSITE}/app`)} />
+      <SmallButton label="Sign my forms" primary onPress={() => router.push('/forms')} />
     </Card>
   );
 }
@@ -191,13 +190,11 @@ function ContributionsCard({ me }: { me: Me }) {
           </View>
         ))
       )}
-      {c.items.length > 3 ? (
-        <Pressable accessibilityRole="link" onPress={() => router.push('/profile')} style={{ paddingTop: 6 }}>
-          <T size={13} weight="semibold" color={colors.green} style={{ textDecorationLine: 'underline' }}>
-            See all {c.items.length} receipts
-          </T>
-        </Pressable>
-      ) : null}
+      <Pressable accessibilityRole="link" onPress={() => router.push('/payments')} style={{ paddingTop: 6 }}>
+        <T size={13} weight="semibold" color={colors.green} style={{ textDecorationLine: 'underline' }}>
+          {c.items.length > 3 ? `See all ${c.items.length} payments and statements` : 'Payment history and statements'}
+        </T>
+      </Pressable>
     </Card>
   );
 }
@@ -208,6 +205,7 @@ function VotesCard({ me }: { me: Me }) {
   const { token, refreshMe } = useSession();
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [proxyFor, setProxyFor] = useState<{ id: string; title: string } | null>(null);
   if (!me.motions?.length) return null;
 
   const vote = async (motionId: string, choice: 'For' | 'Against' | 'Abstain') => {
@@ -254,6 +252,7 @@ function VotesCard({ me }: { me: Me }) {
                 You gave your proxy to {m.proxyGivenTo}. They will vote for you.
               </T>
             ) : (
+              <View style={{ gap: 8 }}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {(['For', 'Against', 'Abstain'] as const).map((c) => (
                   <View key={c} style={{ flex: 1 }}>
@@ -264,6 +263,12 @@ function VotesCard({ me }: { me: Me }) {
                     )}
                   </View>
                 ))}
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => setProxyFor({ id: m.id, title: m.title })} hitSlop={6}>
+                <T size={13} weight="semibold" color={colors.green} style={{ textDecorationLine: 'underline' }}>
+                  Can’t vote? Give your proxy to another member
+                </T>
+              </Pressable>
               </View>
             )
           ) : m.result ? (
@@ -283,8 +288,9 @@ function VotesCard({ me }: { me: Me }) {
         </T>
       ) : null}
       <T size={12} color={colors.muted}>
-        One member, one vote. Can’t vote? You can give your proxy to another member on the website.
+        One member, one vote.
       </T>
+      <ProxySheet visible={!!proxyFor} onClose={() => setProxyFor(null)} motionTitle={proxyFor?.title ?? ''} />
     </Card>
   );
 }

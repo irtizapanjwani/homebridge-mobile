@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Icon } from '@/components/icon';
@@ -136,6 +136,9 @@ export function TextLink({ label, onPress, size = 13, color = colors.green }: { 
 }
 
 const styles = StyleSheet.create({
+  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(15,51,34,0.55)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.white, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 18, paddingBottom: 28, maxWidth: 480, width: '100%', alignSelf: 'center' },
+  option: { flexDirection: 'row', alignItems: 'center', minHeight: 46, borderRadius: 10, paddingHorizontal: 10 },
   row: { flexDirection: 'row', alignItems: 'center' },
   input: {
     height: 52,
@@ -160,3 +163,58 @@ const styles = StyleSheet.create({
   segmentItem: { flex: 1, height: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   segmentOn: { backgroundColor: colors.white },
 });
+
+/** Opens a list to choose from — for long lists like states and countries. */
+export function ListPicker({ label, value, options, onChange, placeholder = 'Choose…' }: { label: string; value: string; options: readonly string[]; onChange: (v: string) => void; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${value || 'not chosen'}`}
+        onPress={() => setOpen(true)}
+        style={[styles.input, styles.row, { gap: 6 }]}>
+        <T size={15} numberOfLines={1} color={value ? colors.ink : colors.muted} style={{ flex: 1 }}>
+          {value || placeholder}
+        </T>
+        <Svg width={14} height={14} viewBox="0 0 24 24">
+          <Path d="M6 9l6 6 6-6" stroke={colors.muted} strokeWidth={2.2} fill="none" strokeLinecap="round" />
+        </Svg>
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setOpen(false)}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <View style={[styles.row, { justifyContent: 'space-between', paddingBottom: 8 }]}>
+              <T size={16} weight="semibold">
+                {label}
+              </T>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => setOpen(false)} hitSlop={8}>
+                <T size={20} color={colors.green}>
+                  ✕
+                </T>
+              </Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: 420 }}>
+              {options.map((o) => (
+                <Pressable
+                  key={o}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: o === value }}
+                  onPress={() => {
+                    onChange(o);
+                    setOpen(false);
+                  }}
+                  style={[styles.option, o === value && { backgroundColor: colors.mint }]}>
+                  <T size={15} weight={o === value ? 'semibold' : 'regular'} color={o === value ? colors.green : colors.ink} style={{ flex: 1 }}>
+                    {o}
+                  </T>
+                  {o === value ? <Icon name="check" size={16} color={colors.green} strokeWidth={2.6} /> : null}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}

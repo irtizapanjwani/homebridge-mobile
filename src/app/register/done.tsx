@@ -43,7 +43,7 @@ export default function Done() {
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 18 }}>
-      <StepHeader step={4} title="All done" back={false} />
+      <StepHeader step={7} title="Application sent" back={false} />
 
       <View style={styles.hero}>
         <CheckBadge size={56} />

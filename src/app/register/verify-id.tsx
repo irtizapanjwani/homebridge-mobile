@@ -24,7 +24,7 @@ export default function VerifyId() {
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 16 }}>
-      <StepHeader step={2} title="Verify your ID" />
+      <StepHeader step={4} title="Verify your ID" />
 
       <View style={{ gap: 4 }}>
         <T serif size={26} color={colors.green}>
@@ -93,7 +93,7 @@ export default function VerifyId() {
         <Button
           label="Continue"
           variant={canContinue ? 'primary' : 'disabled'}
-          onPress={() => router.push('/register/joining-fee')}
+          onPress={() => router.push('/register/nominees')}
         />
       </View>
     </Screen>

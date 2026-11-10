@@ -24,6 +24,48 @@ export const ID_OPTIONS = {
   ],
 } as const;
 
+// Same lists and wording as the website (lib/register-data.ts, lib/content.ts).
+export const NIGERIAN_STATES = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno', 'Cross River',
+  'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT (Abuja)', 'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano',
+  'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo',
+  'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
+];
+export const OTHER_COUNTRY = 'Another country';
+export const COUNTRIES = [
+  'Nigeria', 'United Kingdom', 'United States', 'Canada', 'Ireland', 'Germany', 'Netherlands', 'Italy',
+  'France', 'Spain', 'Belgium', 'United Arab Emirates', 'Saudi Arabia', 'Qatar', 'South Africa', 'Ghana',
+  'Kenya', 'Australia', OTHER_COUNTRY,
+];
+export const CHAPTERS = ['HomeBridge Edo', 'HomeBridge Abuja', 'HomeBridge UK', 'None yet'];
+export const HEARD_OPTIONS = ['WhatsApp', 'Friend or family', 'Church, mosque or union', 'Zoom launch', 'Social media', 'Other'];
+export const MEMBERSHIP_TYPES = [
+  { value: 'home', label: 'Home member', sub: 'Living in Nigeria', more: 'For people who live in Nigeria. Monthly shares from ₦5,000.' },
+  { value: 'diaspora', label: 'Diaspora member', sub: 'Living abroad', more: 'For people who live outside Nigeria. Monthly shares from £25.' },
+  {
+    value: 'founding',
+    label: 'Founding member',
+    sub: '£1,000 / ₦2m block, year one',
+    more: 'For people who join in the first 12 months and take a founding block of at least £1,000 or ₦2,000,000. Same rights and one vote, like everyone else.',
+  },
+  { value: 'professional', label: 'Professional member', sub: 'Pay up to half in skills', more: 'Up to half of your monthly contribution can be paid in professional hours, at a rate the Board approves.' },
+  { value: 'group', label: 'Group member', sub: 'Union, church, mosque, business', more: 'A registered union, cooperative, religious body, association or business joins through one named representative.' },
+] as const;
+export const ROUTE_OPTIONS = [
+  { value: 'lives', label: 'I live in Edo State or Abuja FCT' },
+  { value: 'land', label: 'I live elsewhere, but I or my family own or hold land or a home in Edo or FCT' },
+  { value: 'other', label: 'Another link to Edo or FCT (sent for Director approval)' },
+  { value: 'none', label: 'None of these yet: add me to the Supporter list' },
+] as const;
+export const GROUP_DOC_OPTIONS = [
+  { value: 'cac', label: 'CAC certificate', sub: 'Corporate Affairs Commission' },
+  { value: 'regcert', label: 'Another registration certificate', sub: 'For example a cooperative, union or religious body' },
+] as const;
+export const MAX_NOMINEES = 5;
+
+export type NomineeDraft = { id: string; name: string; relationship: string; contact: string; share: string };
+export type Decl = { character: boolean; bylaws: boolean; risk: boolean; privacy: boolean };
+
 export type Draft = {
   home: boolean;
   name: string;
@@ -36,7 +78,26 @@ export type Draft = {
   country: string;
   cohort: string;
   agreed: boolean;
-  // Step 2
+  // About you
+  dob: string; // DD/MM/YYYY
+  countryOther: string;
+  state: string;
+  city: string;
+  address: string;
+  occupation: string;
+  heard: string;
+  chapter: string;
+  // How you join
+  memberType: string;
+  route: string;
+  routeDetail: string;
+  groupName: string;
+  repName: string;
+  groupDoc: string;
+  // Nominee and agreements
+  nominees: NomineeDraft[];
+  decl: Decl;
+  // Verify ID
   idType: string;
   idNumber: string;
   idPhoto: string | null; // local photo uri
@@ -62,6 +123,22 @@ const empty = (home: boolean): Draft => ({
   country: home ? 'Nigeria' : 'United Kingdom',
   cohort: 'Edo',
   agreed: false,
+  dob: '',
+  countryOther: '',
+  state: home ? 'Edo' : '',
+  city: '',
+  address: '',
+  occupation: '',
+  heard: '',
+  chapter: home ? 'HomeBridge Edo' : 'HomeBridge UK',
+  memberType: home ? 'home' : 'diaspora',
+  route: '',
+  routeDetail: '',
+  groupName: '',
+  repName: '',
+  groupDoc: '',
+  nominees: [{ id: 'n1', name: '', relationship: '', contact: '', share: '100' }],
+  decl: { character: false, bylaws: false, risk: false, privacy: false },
   idType: '',
   idNumber: '',
   idPhoto: null,
@@ -95,17 +172,32 @@ export function money(draft: Pick<Draft, 'home'>, gbp: number, ngn: number) {
 }
 
 /** Back button, "Step x of 4 · title" and the 4 progress bars. */
+export const TOTAL_STEPS = 7;
+
+/** Age in whole years from DD/MM/YYYY, or null if the date isn't valid. */
+export function ageFrom(dob: string): number | null {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(dob.trim());
+  if (!m) return null;
+  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const date = new Date(y, mo - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) return null;
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  if (now.getMonth() < mo - 1 || (now.getMonth() === mo - 1 && now.getDate() < d)) age--;
+  return age >= 0 && age < 130 ? age : null;
+}
+
 export function StepHeader({ step, title, back = true }: { step: number; title: string; back?: boolean }) {
   return (
     <View style={{ gap: 16 }}>
       <View style={[styles.row, !back && { minHeight: 44 }]}>
         {back && <BackButton />}
         <T size={13} color={colors.muted}>
-          Step {step} of 4 · {title}
+          Step {Math.min(step, TOTAL_STEPS)} of {TOTAL_STEPS} · {title}
         </T>
       </View>
       <View style={styles.steps}>
-        {[1, 2, 3, 4].map((i) => (
+        {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((i) => (
           <View key={i} style={[styles.step, { backgroundColor: i <= step ? colors.green : colors.line }]} />
         ))}
       </View>
