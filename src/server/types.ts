@@ -42,6 +42,10 @@ export type MemberDoc = {
   membership?: { memberNo: string; zone: string; seq: number; admittedAt: Date; category?: string };
   decision?: { reason?: string; at: Date };
   infoResponse?: { message: string; at: Date; documentIds?: string[] };
+  forms?: {
+    declaration?: { signedAt: Date; documentId: string };
+    nominee?: { signedAt: Date; documentId: string };
+  };
 };
 
 export type Currency = 'NGN' | 'GBP' | 'USD';

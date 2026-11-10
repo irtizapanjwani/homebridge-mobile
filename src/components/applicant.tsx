@@ -90,14 +90,14 @@ export function CopyButton({ value, light }: { value: string; light?: boolean })
   );
 }
 
-export function HelpCard() {
+export function HelpCard({ member = false }: { member?: boolean }) {
   return (
     <Card style={{ backgroundColor: colors.cream, borderColor: colors.creamBorder, gap: 10 }}>
       <T size={15} weight="semibold">
         Need help?
       </T>
       <T size={13} color={colors.inkSoft}>
-        Questions about your application? Message the membership office.
+        {member ? 'Questions about payments, forms or meetings? Message the office.' : 'Questions about your application? Message the membership office.'}
       </T>
       <Pressable accessibilityRole="link" onPress={() => Linking.openURL(OFFICE_WHATSAPP)} style={styles.whatsapp}>
         <Icon name="chat" size={18} color={colors.white} strokeWidth={1.8} />

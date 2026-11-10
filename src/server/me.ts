@@ -2,6 +2,7 @@
 // Builds what the app shows a signed-in person about their own record: the same facts as the
 // website's /app dashboard (HomeBridge app/app/page.tsx), shaped for the app's screens.
 
+import { glance, ideasFor, meetingFor, motionsFor } from './community';
 import { getDb } from './db';
 import type { ContributionDoc, Currency, DocumentMeta, MemberDoc } from './types';
 
@@ -65,6 +66,17 @@ export async function buildMe(m: MemberDoc) {
   const shares =
     Math.round(contribs.reduce((t, c) => t + (c.currency === 'NGN' ? c.amount / SHARE_PRICE_NGN : 0), 0) * 100) / 100;
 
+  // Member-only parts of the dashboard. Each is optional: a failure leaves that card out.
+  const memberNo = m.membership?.memberNo;
+  const [meeting, motions, ideas, atAGlance] = memberNo
+    ? await Promise.all([
+        meetingFor(memberNo).catch(() => null),
+        motionsFor(memberNo).catch(() => null),
+        ideasFor(m.reference).catch(() => null),
+        glance().catch(() => null),
+      ])
+    : [null, null, null, null];
+
   return {
     reference: m.reference,
     memberNo: m.membership?.memberNo ?? null,
@@ -123,6 +135,17 @@ export async function buildMe(m: MemberDoc) {
           since: new Intl.DateTimeFormat('en-GB', { timeZone: TZ, month: 'short', year: 'numeric' }).format(m.membership.admittedAt),
         }
       : null,
+    forms: m.membership
+      ? {
+          dueBy: LONG.format(new Date(m.membership.admittedAt.getTime() + 14 * 86_400_000)),
+          declarationSignedAt: m.forms?.declaration ? LONG.format(m.forms.declaration.signedAt) : null,
+          nomineeSignedAt: m.forms?.nominee ? LONG.format(m.forms.nominee.signedAt) : null,
+        }
+      : null,
+    meeting,
+    motions,
+    ideas,
+    glance: atAGlance,
     contributions: m.membership
       ? {
           currency: (m.country === 'Nigeria' ? 'NGN' : 'GBP') as Currency,
