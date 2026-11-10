@@ -7,19 +7,33 @@ import { Icon, type IconName } from '@/components/icon';
 import { Sheet } from '@/components/sheet';
 import { Button, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
-import { pickFile, type Picked } from '@/lib/upload';
+import { api } from '@/lib/api';
+import { useSession } from '@/lib/session';
+import { pickFile, sendForm, type Picked } from '@/lib/upload';
 
-// The three member pop-ups from the website, as screens only for now: each shows a confirmation
-// but doesn't save yet (TODO: connect to the app API when those routes are added).
+// The three member pop-ups from the website: proof of payment, payment holiday and proxy.
+// Each sends to the app's API (same rules and database as the website).
 
 const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
-const monthsFrom = (offset: number, count: number) =>
+type Month = { key: string; label: string }; // key is YYYY-MM
+const monthsFrom = (offset: number, count: number): Month[] =>
   Array.from({ length: count }, (_, i) => {
     const d = new Date();
     d.setDate(1);
     d.setMonth(d.getMonth() + offset + i);
-    return MONTH.format(d);
+    return { key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: MONTH.format(d) };
   });
+const errorText = (e: unknown) => (e instanceof Error ? e.message : 'That didn’t send. Please try again.');
+
+/** DD/MM/YYYY → YYYY-MM-DD, or '' if it isn't a real date. */
+function isoDate(v: string) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v.trim());
+  if (!m) return '';
+  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const date = new Date(Date.UTC(y, mo - 1, d));
+  if (date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d) return '';
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
   return (
@@ -53,7 +67,9 @@ function Done({ title, text, onClose }: { title: string; text: string; onClose: 
 export function ProofOfPaymentSheet({ visible, onClose, currency }: { visible: boolean; onClose: () => void; currency: 'GBP' | 'NGN' }) {
   const [cur, setCur] = useState<'GBP' | 'NGN'>(currency);
   const [amount, setAmount] = useState('');
-  const [month, setMonth] = useState(monthsFrom(0, 1)[0]);
+  const { token, refreshMe } = useSession();
+  const [month, setMonth] = useState(monthsFrom(0, 1)[0].key);
+  const [busy, setBusy] = useState(false);
   const [date, setDate] = useState('');
   const [ref, setRef] = useState('');
   const [file, setFile] = useState<Picked | null>(null);
@@ -70,11 +86,27 @@ export function ProofOfPaymentSheet({ visible, onClose, currency }: { visible: b
     if (p === 'denied') return setError('Please allow HomeBridge to use your camera or photos in your phone’s settings.');
     if (p) setFile(p);
   };
-  const send = () => {
+  const send = async () => {
     if (!Number(amount)) return setError('Enter the amount you paid.');
+    const paidOn = isoDate(date);
+    if (!paidOn) return setError('Enter the date you paid, like 05/11/2026.');
     if (!file) return setError('Add a photo or PDF of your bank receipt.');
+    if (!token) return setError('Please sign in again.');
     setError('');
-    setSent(true); // TODO: POST to the app API
+    setBusy(true);
+    try {
+      await sendForm(token, '/api/payment-proof', { amount, currency: cur, period: month, paidOn, bankRef: ref }, file);
+      setSent(true);
+      setAmount('');
+      setDate('');
+      setRef('');
+      setFile(null);
+      refreshMe();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -111,7 +143,7 @@ export function ProofOfPaymentSheet({ visible, onClose, currency }: { visible: b
           <Field label="Which month is it for?">
             <View style={styles.chips}>
               {monthsFrom(-2, 3).map((m) => (
-                <Chip key={m} label={m} on={month === m} onPress={() => setMonth(m)} />
+                <Chip key={m.key} label={m.label} on={month === m.key} onPress={() => setMonth(m.key)} />
               ))}
             </View>
           </Field>
@@ -151,7 +183,7 @@ export function ProofOfPaymentSheet({ visible, onClose, currency }: { visible: b
             )}
           </Field>
           {error ? <ErrorBox text={error} /> : null}
-          <Button label="Send proof" onPress={send} />
+          <Button label={busy ? 'Sending…' : 'Send proof'} variant={busy ? 'disabled' : 'primary'} onPress={send} />
         </>
       )}
     </Sheet>
@@ -161,8 +193,11 @@ export function ProofOfPaymentSheet({ visible, onClose, currency }: { visible: b
 // ---------- Ask for a payment holiday ----------
 
 export function PaymentHolidaySheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { token } = useSession();
   const [months, setMonths] = useState<string[]>([]);
   const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const options = monthsFrom(0, 6);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
 
@@ -172,11 +207,25 @@ export function PaymentHolidaySheet({ visible, onClose }: { visible: boolean; on
     setError('');
     onClose();
   };
-  const send = () => {
+  const send = async () => {
     if (!months.length) return setError('Choose at least one month.');
+    // The website asks for a first and last month, so the months must be next to each other.
+    const idx = months.map((m) => options.findIndex((o) => o.key === m)).sort((a, b) => a - b);
+    if (idx[idx.length - 1] - idx[0] + 1 !== idx.length) return setError('Choose months that follow each other, for example December, January and February.');
     if (reason.trim().length < 5) return setError('Tell the Treasurer briefly why.');
+    if (!token) return setError('Please sign in again.');
     setError('');
-    setSent(true); // TODO: POST to the app API
+    setBusy(true);
+    try {
+      await api('/api/holiday', { token, body: { from: options[idx[0]].key, to: options[idx[idx.length - 1]].key, reason } });
+      setSent(true);
+      setMonths([]);
+      setReason('');
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -194,8 +243,8 @@ export function PaymentHolidaySheet({ visible, onClose }: { visible: boolean; on
           </T>
           <Field label={`Which months? (${months.length} of 3)`}>
             <View style={styles.chips}>
-              {monthsFrom(0, 6).map((m) => (
-                <Chip key={m} label={m} on={months.includes(m)} onPress={() => toggle(m)} />
+              {options.map((m) => (
+                <Chip key={m.key} label={m.label} on={months.includes(m.key)} onPress={() => toggle(m.key)} />
               ))}
             </View>
           </Field>
@@ -203,7 +252,7 @@ export function PaymentHolidaySheet({ visible, onClose }: { visible: boolean; on
             <Input value={reason} onChangeText={setReason} multiline placeholder="A few words for the Treasurer" style={{ height: 90, paddingTop: 12, textAlignVertical: 'top' }} />
           </Field>
           {error ? <ErrorBox text={error} /> : null}
-          <Button label="Send request" onPress={send} />
+          <Button label={busy ? 'Sending…' : 'Send request'} variant={busy ? 'disabled' : 'primary'} onPress={send} />
         </>
       )}
     </Sheet>
@@ -212,19 +261,33 @@ export function PaymentHolidaySheet({ visible, onClose }: { visible: boolean; on
 
 // ---------- Give your proxy ----------
 
-export function ProxySheet({ visible, onClose, motionTitle }: { visible: boolean; onClose: () => void; motionTitle: string }) {
+export function ProxySheet({ visible, onClose, motionId, motionTitle }: { visible: boolean; onClose: () => void; motionId: string; motionTitle: string }) {
+  const { token, refreshMe } = useSession();
   const [no, setNo] = useState('');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const close = () => {
+    if (sent) setNo('');
     setSent(false);
     setError('');
     onClose();
   };
-  const send = () => {
-    if (!/^HBC-[A-Z]+-\d{2}-\d{5}$/.test(no.trim().toUpperCase())) return setError('Membership numbers look like HBC-EDO-26-00013 — please check and try again.');
+  const send = async () => {
+    const holderNo = no.trim().toUpperCase().replace(/\s+/g, '');
+    if (!/^HBC-[A-Z]+-\d{2}-\d{5}$/.test(holderNo)) return setError('Membership numbers look like HBC-EDO-26-00013 — please check and try again.');
+    if (!token) return setError('Please sign in again.');
     setError('');
-    setSent(true); // TODO: POST to the app API
+    setBusy(true);
+    try {
+      await api('/api/proxy', { token, body: { motionId, holderNo } });
+      setSent(true);
+      refreshMe();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <Sheet visible={visible} title="Give your proxy" onClose={close}>
@@ -239,7 +302,7 @@ export function ProxySheet({ visible, onClose, motionTitle }: { visible: boolean
             <Input value={no} onChangeText={setNo} autoCapitalize="characters" placeholder="HBC-EDO-26-00013" />
           </Field>
           {error ? <ErrorBox text={error} /> : null}
-          <Button label="Give my proxy" onPress={send} />
+          <Button label={busy ? 'Sending…' : 'Give my proxy'} variant={busy ? 'disabled' : 'primary'} onPress={send} />
         </>
       )}
     </Sheet>

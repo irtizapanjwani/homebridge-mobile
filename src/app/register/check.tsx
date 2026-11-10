@@ -2,9 +2,28 @@ import { router, type Href } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { api, ApiError } from '@/lib/api';
+import { useSession } from '@/lib/session';
+import { uploadDocument, type Picked } from '@/lib/upload';
 import { BANK, ID_OPTIONS, JOINING_FEE, MEMBERSHIP_TYPES, money, OTHER_COUNTRY, ROUTE_OPTIONS, StepHeader, useRegister } from '@/components/register';
 import { Button, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
+
+const BANK_METHOD = 'Bank transfer to VEKAT First Bank 2049483671 (₦10,000)';
+const CARD_METHOD = 'Secure card payment link (£10)';
+
+/** DD/MM/YYYY → YYYY-MM-DD (what the website stores). */
+const isoDate = (v: string) => {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v.trim());
+  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : v.trim();
+};
+
+/** A photo picked earlier (just its uri) as a file to upload. */
+const asFile = (uri: string, name: string): Picked => {
+  const ext = (/\.(\w+)(?:\?|$)/.exec(uri)?.[1] ?? 'jpg').toLowerCase();
+  const mimeType = ext === 'png' ? 'image/png' : ext === 'pdf' ? 'application/pdf' : ext === 'heic' ? 'image/heic' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+  return { uri, name: `${name}.${ext === 'jpeg' ? 'jpg' : ext}`, mimeType };
+};
 
 function Section({ title, edit, children }: { title: string; edit: Href; children: ReactNode }) {
   return (
@@ -37,16 +56,70 @@ function Row({ label, value }: { label: string; value: string }) {
 
 /** Step 7 — everything they entered, with an Edit link on each part, then "Send application". */
 export default function CheckAndSend() {
-  const { draft } = useRegister();
+  const { draft, set } = useRegister();
+  const { adopt } = useSession();
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
   const group = draft.memberType === 'group';
   const id = [...ID_OPTIONS.home, ...ID_OPTIONS.abroad].find((o) => o.value === draft.idType);
   const country = draft.country === OTHER_COUNTRY ? draft.countryOther : draft.country;
 
-  // TODO: send everything to the app's apply API. For now this only moves to the confirmation.
-  const send = () => {
+  // Same fields as the website's registration form, so the office sees one kind of application.
+  const send = async () => {
     setSending(true);
-    setTimeout(() => router.replace('/register/done'), 600);
+    setError('');
+    const whatsapp = `${draft.code} ${draft.phone}`.trim();
+    const supporter = draft.route === 'none';
+    try {
+      const res = await api<{ reference: string; token: string; expiresAt: string }>('/api/apply', {
+        body: {
+          contactMethod: draft.contactMethod,
+          contact: draft.contactMethod === 'email' ? draft.email : whatsapp,
+          password: draft.password,
+          passwordConfirm: draft.passwordConfirm,
+          fullName: draft.name.trim().replace(/\s+/g, ' '),
+          dob: isoDate(draft.dob),
+          country: draft.country,
+          countryOther: draft.countryOther,
+          state: draft.country === 'Nigeria' ? draft.state : '',
+          city: draft.city,
+          address: draft.address,
+          whatsapp,
+          email: draft.email,
+          occupation: draft.occupation,
+          heard: draft.heard,
+          chapter: draft.chapter,
+          memberType: draft.memberType,
+          route: draft.route,
+          routeDetail: draft.routeDetail,
+          idChoice: draft.idType,
+          groupName: draft.groupName,
+          repName: draft.repName,
+          groupDoc: draft.groupDoc,
+          nominees: draft.nominees.map(({ name, relationship, contact, share }) => ({ name, relationship, contact, share })),
+          decl: draft.decl,
+          supporterConsent: supporter,
+          paymentMethod: draft.payMethod === 'bank' ? BANK_METHOD : draft.payMethod === 'card' ? CARD_METHOD : '',
+          datePaid: draft.datePaid ? isoDate(draft.datePaid) : '',
+          paymentReference: draft.payReference,
+        },
+      });
+      // Signed in straight away, like on the website. The password is no longer needed in memory.
+      set({ reference: res.reference, password: '', passwordConfirm: '' });
+      await adopt(res.token, res.expiresAt);
+      // The photos go up after the application is saved. A failed upload never loses the
+      // application: they can add it again from their dashboard.
+      if (!supporter) {
+        const uploads: Promise<unknown>[] = [];
+        if (draft.idPhoto) uploads.push(uploadDocument(res.token, 'id', asFile(draft.idPhoto, 'id-photo')).catch(() => set({ idPhoto: null })));
+        if (draft.addressProof) uploads.push(uploadDocument(res.token, 'address', asFile(draft.addressProof, 'proof-of-address')).catch(() => set({ addressProof: null })));
+        await Promise.all(uploads);
+      }
+      router.replace('/register/done');
+    } catch (e) {
+      setError(e instanceof ApiError || e instanceof Error ? e.message : 'We could not send your application. Please try again.');
+      setSending(false);
+    }
   };
 
   return (
@@ -106,6 +179,11 @@ export default function CheckAndSend() {
       </Section>
 
       <View style={{ marginTop: 8, gap: 8 }}>
+        {error ? (
+          <T size={13} color="#9A3412" style={{ textAlign: 'center' }}>
+            {error}
+          </T>
+        ) : null}
         {sending ? (
           <ActivityIndicator color={colors.green} style={{ height: 54 }} />
         ) : (

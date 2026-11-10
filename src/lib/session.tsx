@@ -47,6 +47,7 @@ type Session = {
   refreshMe: () => Promise<Me | null>;
   /** Signs in and returns the person's record, so the caller can send them to the right screen. */
   signIn: (login: string, password: string, remember: boolean) => Promise<Me | null>;
+  adopt: (token: string, expiresAt: string) => Promise<Me | null>;
   signOut: () => Promise<void>;
 };
 
@@ -105,10 +106,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [loadMe],
   );
 
+  /** Uses a token the API just gave us (after registering), and keeps it on the device. */
+  const adopt = useCallback(
+    async (t: string, expiresAt: string) => {
+      setToken(t);
+      await store.set({ token: t, expiresAt });
+      return loadMe(t);
+    },
+    [loadMe],
+  );
+
   const refreshMe = useCallback(() => loadMe(token), [loadMe, token]);
 
   return (
-    <SessionContext.Provider value={{ ready, token, me, meError, refreshMe, signIn, signOut }}>{children}</SessionContext.Provider>
+    <SessionContext.Provider value={{ ready, token, me, meError, refreshMe, signIn, adopt, signOut }}>{children}</SessionContext.Provider>
   );
 }
 

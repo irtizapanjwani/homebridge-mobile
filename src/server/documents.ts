@@ -10,7 +10,15 @@ import { Binary } from 'mongodb';
 import { getDb } from './db';
 
 export type UploadType = 'id' | 'address' | 'info';
-export const DOC_LABEL: Record<UploadType, string> = { id: 'ID document', address: 'Proof of address', info: 'Sent with requested information' };
+export type DocType = UploadType | 'declaration' | 'nominee_form' | 'payment_proof';
+export const DOC_LABEL: Record<DocType, string> = {
+  id: 'ID document',
+  address: 'Proof of address',
+  info: 'Sent with requested information',
+  declaration: 'Signed declaration form',
+  nominee_form: 'Signed nominee form',
+  payment_proof: 'Proof of payment',
+};
 export const DOC_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
 export const DOC_MAX_BYTES = 4 * 1024 * 1024; // Vercel refuses bodies over ~4.5 MB
 export const INFO_MESSAGE_MAX = 1000;
@@ -32,7 +40,7 @@ export function isDocumentStorageConfigured() {
   }
 }
 
-export async function saveDocument(input: { ownerRef: string; type: UploadType; name: string; contentType: string; data: Uint8Array }) {
+export async function saveDocument(input: { ownerRef: string; type: DocType; name: string; contentType: string; data: Uint8Array }) {
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key(), iv);
   cipher.setAAD(Buffer.from(`${input.ownerRef}|${input.type}`));

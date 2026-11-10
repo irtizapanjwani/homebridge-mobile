@@ -5,10 +5,8 @@ import { CheckBadge } from '@/components/icon';
 import { Field } from '@/components/form';
 import { MIN_MONTHLY, money, StepHeader, useRegister } from '@/components/register';
 import { Button, Screen, T } from '@/components/ui';
+import { homeFor, useSession } from '@/lib/session';
 import { colors } from '@/constants/theme';
-
-// TODO: the reference comes back from the website when the application is saved (HBA-YYMM-NNNN).
-const DEMO_REFERENCE = 'HBA-2611-0042';
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
   return (
@@ -26,6 +24,8 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
 
 export default function Done() {
   const { draft, set } = useRegister();
+  const { token, me } = useSession();
+  const reference = draft.reference || me?.reference || '';
   const first = draft.name.trim().split(/\s+/)[0];
 
   const amounts = draft.home ? [MIN_MONTHLY.ngn, 10_000, 20_000] : [MIN_MONTHLY.gbp, 50, 100];
@@ -33,13 +33,13 @@ export default function Done() {
   const nth = (d: number) => (d === 1 ? '1st' : d === 7 ? '7th' : d === 15 ? '15th' : '25th');
 
   const timeline = [
-    { title: 'Application received', sub: `Reference ${DEMO_REFERENCE}`, done: true },
+    { title: 'Application received', sub: `Reference ${reference}`, done: true },
     { title: 'ID and payment check', sub: 'The office checks your ID and joining fee · 1–3 working days', done: false },
     { title: 'Membership number', sub: 'Sent by email and WhatsApp with your certificate and welcome pack', done: false },
   ];
 
-  // TODO: save the chosen monthly amount and day with the application.
-  const finish = () => router.replace('/sign-in');
+  // Signed in after sending, so Finish opens their applicant dashboard.
+  const finish = () => router.replace(token ? homeFor(me) : '/sign-in');
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 18 }}>
@@ -55,7 +55,7 @@ export default function Done() {
         </T>
         <View style={styles.ref}>
           <T size={20} weight="bold" color={colors.green} style={{ letterSpacing: 1 }} selectable>
-            {DEMO_REFERENCE}
+            {reference}
           </T>
         </View>
       </View>
@@ -114,7 +114,7 @@ export default function Done() {
       <View style={{ marginTop: 'auto', gap: 8 }}>
         <Button label="Finish" onPress={finish} />
         <T size={12} color={colors.muted} style={{ textAlign: 'center' }}>
-          You can sign in once your membership number arrives.
+          {token ? 'You can follow your application from your dashboard.' : 'Sign in with your email or phone and password to follow your application.'}
         </T>
       </View>
     </Screen>

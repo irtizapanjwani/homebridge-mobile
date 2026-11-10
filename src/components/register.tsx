@@ -109,6 +109,8 @@ export type Draft = {
   // Step 4
   monthly: number;
   payDay: number;
+  /** Set once the application is saved: HBA-YYMM-NNNN (or SUP-… for a supporter). */
+  reference: string;
 };
 
 const empty = (home: boolean): Draft => ({
@@ -148,6 +150,7 @@ const empty = (home: boolean): Draft => ({
   payReference: '',
   monthly: home ? MIN_MONTHLY.ngn : MIN_MONTHLY.gbp,
   payDay: 1,
+  reference: '',
 });
 
 type Ctx = { draft: Draft; set: (patch: Partial<Draft>) => void; reset: (home: boolean) => void };

@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { Field, Input } from '@/components/form';
 import { Icon } from '@/components/icon';
@@ -46,13 +46,19 @@ function BankRow({ label, value, copy }: { label: string; value: string; copy?: 
   );
 }
 
+const STRIPE_PAYMENT_LINK = process.env.EXPO_PUBLIC_STRIPE_PAYMENT_LINK || 'https://buy.stripe.com/8x214nbjMdZg2gddNI8IU00';
+
 export default function JoiningFee() {
   const { draft, set } = useRegister();
   const fee = money(draft, JOINING_FEE.gbp, JOINING_FEE.ngn);
   const ngnFee = `₦${JOINING_FEE.ngn.toLocaleString('en-GB')}`;
 
-  // TODO: card → open the Stripe payment link with the applicant's reference; bank → save date/reference to the website.
-  const next = () => router.push('/register/check');
+  // Card: the same Stripe payment link as the website, then on to Check and send. Bank: the date
+  // and reference are sent with the application, and the office confirms the money.
+  const next = () => {
+    if (draft.payMethod === 'card') Linking.openURL(STRIPE_PAYMENT_LINK).catch(() => {});
+    router.push('/register/check');
+  };
 
   return (
     <Screen edges={['top', 'bottom']} contentStyle={{ gap: 16 }}>

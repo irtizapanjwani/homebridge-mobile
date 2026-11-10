@@ -208,14 +208,27 @@ function VotesCard({ me }: { me: Me }) {
   const [proxyFor, setProxyFor] = useState<{ id: string; title: string } | null>(null);
   if (!me.motions?.length) return null;
 
-  const vote = async (motionId: string, choice: 'For' | 'Against' | 'Abstain') => {
-    setBusy(motionId + choice);
+  const vote = async (motionId: string, choice: 'For' | 'Against' | 'Abstain', forMemberNo?: string) => {
+    setBusy(motionId + choice + (forMemberNo ?? ''));
     setError('');
     try {
-      await api('/api/vote', { token, body: { motionId, choice } });
+      await api('/api/vote', { token, body: { motionId, choice, ...(forMemberNo ? { forMemberNo } : {}) } });
       await refreshMe();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Your vote could not be saved.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const cancelProxy = async (motionId: string) => {
+    setBusy(motionId + 'cancel');
+    setError('');
+    try {
+      await api('/api/proxy', { token, body: { motionId, cancel: true } });
+      await refreshMe();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That did not work. Please try again.');
     } finally {
       setBusy('');
     }
@@ -248,9 +261,20 @@ function VotesCard({ me }: { me: Me }) {
                 {m.myVoteByProxy ? ` (by your proxy ${m.myVoteByProxy})` : ''}
               </T>
             ) : m.proxyGivenTo ? (
-              <T size={13} color={colors.muted}>
-                You gave your proxy to {m.proxyGivenTo}. They will vote for you.
-              </T>
+              <View style={{ gap: 6 }}>
+                <T size={13} color={colors.muted}>
+                  You gave your proxy to {m.proxyGivenTo}. They will vote for you.
+                </T>
+                {busy === m.id + 'cancel' ? (
+                  <ActivityIndicator color={colors.green} style={{ alignSelf: 'flex-start' }} />
+                ) : (
+                  <Pressable accessibilityRole="button" onPress={() => cancelProxy(m.id)} hitSlop={6} disabled={!!busy}>
+                    <T size={13} weight="semibold" color={colors.green} style={{ textDecorationLine: 'underline' }}>
+                      Cancel my proxy and vote myself
+                    </T>
+                  </Pressable>
+                )}
+              </View>
             ) : (
               <View style={{ gap: 8 }}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -271,7 +295,35 @@ function VotesCard({ me }: { me: Me }) {
               </Pressable>
               </View>
             )
-          ) : m.result ? (
+          ) : null}
+          {m.status === 'open' && m.proxiesHeld?.length ? (
+            <View style={styles.held}>
+              <T size={13} weight="semibold">
+                You hold {m.proxiesHeld.length === 1 ? 'a proxy' : `${m.proxiesHeld.length} proxies`} on this vote
+              </T>
+              {m.proxiesHeld.map((p) => (
+                <View key={p.memberNo} style={{ gap: 6 }}>
+                  <T size={12} color={colors.inkSoft}>
+                    For {p.name || 'a member'} ({p.memberNo}){p.voted ? ` · voted ${p.voted}` : ''}
+                  </T>
+                  {!p.voted ? (
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {(['For', 'Against', 'Abstain'] as const).map((c) => (
+                        <View key={c} style={{ flex: 1 }}>
+                          {busy === m.id + c + p.memberNo ? (
+                            <ActivityIndicator color={colors.green} style={{ height: 44 }} />
+                          ) : (
+                            <SmallButton label={c} disabled={!!busy} onPress={() => vote(m.id, c, p.memberNo)} />
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {m.status !== 'open' && m.result ? (
             <T size={13} color={colors.inkSoft}>
               <T size={13} weight="semibold">
                 {m.result.outcome}
@@ -290,7 +342,7 @@ function VotesCard({ me }: { me: Me }) {
       <T size={12} color={colors.muted}>
         One member, one vote.
       </T>
-      <ProxySheet visible={!!proxyFor} onClose={() => setProxyFor(null)} motionTitle={proxyFor?.title ?? ''} />
+      <ProxySheet visible={!!proxyFor} onClose={() => setProxyFor(null)} motionId={proxyFor?.id ?? ''} motionTitle={proxyFor?.title ?? ''} />
     </Card>
   );
 }
@@ -623,6 +675,7 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  held: { backgroundColor: colors.mint, borderRadius: 12, padding: 10, gap: 8 },
   between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 18, padding: 16 },

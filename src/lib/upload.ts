@@ -27,16 +27,15 @@ export async function pickFile(source: 'camera' | 'library' | 'file'): Promise<P
   return { uri: a.uri, name: a.fileName ?? `photo.${mimeType.split('/')[1] ?? 'jpg'}`, mimeType, size: a.fileSize };
 }
 
-/** Sends one file (and/or a message) to POST /api/documents. Throws ApiError with a message to show. */
-export async function uploadDocument(token: string, type: 'id' | 'address' | 'info', file: Picked | null, message = '') {
+/** Sends a form (text fields and an optional file) to one of the app's API routes. */
+export async function sendForm(token: string, path: string, fields: Record<string, string>, file: Picked | null) {
   if (file?.size && file.size > MAX_BYTES) throw new ApiError('That file is too large. Please choose one under 4 MB.', 413);
   const form = new FormData();
-  form.append('type', type);
-  if (message) form.append('message', message);
+  for (const [k, v] of Object.entries(fields)) if (v) form.append(k, v);
   if (file) {
     if (Platform.OS === 'web') {
       const blob = await (await fetch(file.uri)).blob();
-      form.append('file', new File([blob], file.name, { type: file.mimeType }) as unknown as Blob);
+      form.append('file', new File([blob], file.name, { type: blob.type || file.mimeType }) as unknown as Blob);
     } else {
       // React Native uploads a local file from its uri.
       form.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as unknown as Blob);
@@ -44,10 +43,15 @@ export async function uploadDocument(token: string, type: 'id' | 'address' | 'in
   }
   let res: Response;
   try {
-    res = await fetch(`${baseUrl()}/api/documents`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+    res = await fetch(`${baseUrl()}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
   } catch {
     throw new ApiError('Can’t reach HomeBridge. Check your internet connection and try again.', 0);
   }
   const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-  if (!res.ok || !data.ok) throw new ApiError(data.error || 'Upload failed. Please try again.', res.status);
+  if (!res.ok || !data.ok) throw new ApiError(data.error || 'That didn’t send. Please try again.', res.status);
+}
+
+/** Sends one file (and/or a message) to POST /api/documents. Throws ApiError with a message to show. */
+export function uploadDocument(token: string, type: 'id' | 'address' | 'info', file: Picked | null, message = '') {
+  return sendForm(token, '/api/documents', { type, message }, file);
 }

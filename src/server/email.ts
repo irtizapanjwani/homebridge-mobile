@@ -25,3 +25,21 @@ export async function emailOffice(subject: string, text: string): Promise<{ ok: 
     return { ok: false, error: err instanceof Error ? err.message : 'unknown error' };
   }
 }
+
+export const isEmailConfigured = () => Boolean(process.env.RESEND_API_KEY);
+
+/** A plain email to one person (an applicant or member). Same Resend settings as the office email. */
+export async function sendEmail(to: string, subject: string, text: string): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || !to) return { ok: false, error: 'email not configured' };
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: process.env.EMAIL_FROM?.trim() || 'onboarding@resend.dev', to: [to], subject, text }),
+    });
+    return res.ok ? { ok: true } : { ok: false, error: `Resend ${res.status}` };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'unknown error' };
+  }
+}

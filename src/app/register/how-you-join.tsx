@@ -16,7 +16,7 @@ export default function HowYouJoin() {
   const missing = [
     !draft.memberType && 'choose a membership type',
     !draft.route && 'tell us your link to Edo or FCT',
-    needsDetail && draft.routeDetail.trim().length < 3 && 'add a few details about your link',
+    needsDetail && draft.routeDetail.trim().length < 6 && 'add a few details about your link',
     group && draft.groupName.trim().length < 2 && 'enter the group’s registered name',
     group && draft.repName.trim().length < 2 && 'enter the representative’s full name',
     group && !draft.groupDoc && 'choose the registration document',
