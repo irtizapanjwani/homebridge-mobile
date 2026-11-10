@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { AppBar } from '@/components/dashboard-header';
 import { Icon } from '@/components/icon';
 import { PaymentHolidaySheet, ProofOfPaymentSheet } from '@/components/member-popups';
 import { BackButton, Button, Radio, Screen, T, Toggle } from '@/components/ui';
@@ -47,6 +48,7 @@ export default function Contribute() {
 
   return (
     <Screen withTabBar>
+      <AppBar />
       <View style={styles.row}>
         <BackButton />
         <T serif size={24} color={colors.green}>

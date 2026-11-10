@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
+import { AppBar } from '@/components/dashboard-header';
 import { Icon } from '@/components/icon';
 import { Button, Screen, T, Toggle } from '@/components/ui';
 import { colors } from '@/constants/theme';
@@ -48,6 +49,7 @@ export default function Profile() {
 
   return (
     <Screen withTabBar>
+      <AppBar avatarLabel="Open my account" onAvatar={() => router.push('/account')} />
       <T serif size={26} color={colors.green} style={{ minHeight: 44, textAlignVertical: 'center' }}>
         Profile
       </T>

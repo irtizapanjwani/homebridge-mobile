@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { AppBar } from '@/components/dashboard-header';
 import { CheckBadge, Icon } from '@/components/icon';
 import { Button, Radio, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
@@ -22,6 +23,7 @@ export default function Vote() {
 
   return (
     <Screen withTabBar>
+      <AppBar />
       <View style={styles.header}>
         <T serif size={26} color={colors.green} style={{ flex: 1 }}>
           Vote

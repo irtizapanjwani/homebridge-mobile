@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { AppBar } from '@/components/dashboard-header';
 import { Icon } from '@/components/icon';
 import { Pill, ProgressBar, Screen, T } from '@/components/ui';
 import { colors } from '@/constants/theme';
@@ -22,6 +23,7 @@ export default function Projects() {
 
   return (
     <Screen withTabBar>
+      <AppBar />
       <View style={styles.header}>
         <T serif size={26} color={colors.green} style={{ flex: 1 }}>
           Projects
