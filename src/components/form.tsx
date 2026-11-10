@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Icon } from '@/components/icon';
+import { PopupFrame } from '@/components/sheet';
 import { T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
 
@@ -136,8 +137,6 @@ export function TextLink({ label, onPress, size = 13, color = colors.green }: { 
 }
 
 const styles = StyleSheet.create({
-  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(15,51,34,0.55)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: colors.white, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 18, paddingBottom: 28, maxWidth: 480, width: '100%', alignSelf: 'center' },
   option: { flexDirection: 'row', alignItems: 'center', minHeight: 46, borderRadius: 10, paddingHorizontal: 10 },
   row: { flexDirection: 'row', alignItems: 'center' },
   input: {
@@ -181,9 +180,7 @@ export function ListPicker({ label, value, options, onChange, placeholder = 'Cho
           <Path d="M6 9l6 6 6-6" stroke={colors.muted} strokeWidth={2.2} fill="none" strokeLinecap="round" />
         </Svg>
       </Pressable>
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.sheetBackdrop} onPress={() => setOpen(false)}>
-          <Pressable style={styles.sheet} onPress={() => {}}>
+      <PopupFrame visible={open} onClose={() => setOpen(false)} place="bottom" panelStyle={{ backgroundColor: colors.white, gap: 0 }}>
             <View style={[styles.row, { justifyContent: 'space-between', paddingBottom: 8 }]}>
               <T size={16} weight="semibold">
                 {label}
@@ -194,7 +191,7 @@ export function ListPicker({ label, value, options, onChange, placeholder = 'Cho
                 </T>
               </Pressable>
             </View>
-            <ScrollView style={{ maxHeight: 420 }}>
+            <ScrollView style={{ flexGrow: 0, flexShrink: 1 }}>
               {options.map((o) => (
                 <Pressable
                   key={o}
@@ -212,9 +209,7 @@ export function ListPicker({ label, value, options, onChange, placeholder = 'Cho
                 </Pressable>
               ))}
             </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      </PopupFrame>
     </>
   );
 }

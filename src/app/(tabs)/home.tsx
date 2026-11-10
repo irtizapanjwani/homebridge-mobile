@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { CopyButton, HelpCard } from '@/components/applicant';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { ProxySheet } from '@/components/member-popups';
+import { PopupFrame, PopupScroll } from '@/components/sheet';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
@@ -552,18 +553,16 @@ function MeetingCard({ me }: { me: Me }) {
         <MeetingBody me={me} />
       </Card>
       {/* Pops up when the dashboard opens until the member says whether they'll come. */}
-      <Modal visible={open && me.meeting.answer === null} transparent animationType="fade" onRequestClose={close}>
-        <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close">
-          <Pressable style={styles.popup} onPress={() => {}}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} style={styles.close} hitSlop={8}>
-              <T size={20} color={colors.green}>
-                ✕
-              </T>
-            </Pressable>
-            <MeetingBody me={me} roomForClose />
-          </Pressable>
+      <PopupFrame visible={open && me.meeting.answer === null} onClose={close} panelStyle={{ backgroundColor: colors.white }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} style={styles.close} hitSlop={8}>
+          <T size={20} color={colors.green}>
+            ✕
+          </T>
         </Pressable>
-      </Modal>
+        <PopupScroll gap={0}>
+          <MeetingBody me={me} roomForClose />
+        </PopupScroll>
+      </PopupFrame>
     </>
   );
 }
@@ -725,8 +724,6 @@ const styles = StyleSheet.create({
   dateTop: { backgroundColor: colors.green, paddingVertical: 3, alignItems: 'center' },
   agenda: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cream, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
   agendaNum: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.green, alignItems: 'center', justifyContent: 'center' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(15,51,34,0.6)', justifyContent: 'center', padding: 16 },
-  popup: { backgroundColor: colors.white, borderRadius: 22, padding: 18, maxWidth: 480, width: '100%', alignSelf: 'center' },
   close: { position: 'absolute', top: 10, right: 10, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   glanceBox: { flex: 1, backgroundColor: colors.mint, borderRadius: 12, padding: 10, gap: 2 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
