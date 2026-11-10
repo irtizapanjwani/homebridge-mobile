@@ -4,7 +4,10 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Field, PasswordInput, TextLink } from '@/components/form';
+import { ErrorBox } from '@/components/applicant';
 import { BackButton, Button, Screen, T } from '@/components/ui';
+import { api } from '@/lib/api';
+import { homeFor, useSession } from '@/lib/session';
 import { colors, fonts } from '@/constants/theme';
 
 const CODE_SECONDS = 15 * 60;
@@ -40,7 +43,11 @@ function Rule({ ok, label }: { ok: boolean; label: string }) {
 }
 
 export default function ResetPassword() {
-  const { sentTo } = useLocalSearchParams<{ sentTo?: string }>();
+  const { login = '' } = useLocalSearchParams<{ login?: string }>();
+  const { adopt } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [note, setNote] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -55,22 +62,39 @@ export default function ResetPassword() {
   const ss = String(secondsLeft % 60).padStart(2, '0');
 
   const { score, label } = strength(password);
+  // Same rule as the website: at least 10 characters (length beats punctuation rules).
   const rules = {
-    length: password.length >= 10,
-    capNum: /[A-Z]/.test(password) && /\d/.test(password),
-    // TODO: the server checks this against the old password; here we only know it's not empty.
-    notOld: password.length > 0,
+    length: password.trim().length >= 10,
     match: password.length > 0 && password === confirm,
   };
   const canSave = code.length === 6 && secondsLeft > 0 && Object.values(rules).every(Boolean);
 
-  // TODO: call the website's reset-password API, then send the member to Sign in.
-  const save = () => router.dismissTo('/sign-in');
+  // Saves the new password and signs straight in, like the website.
+  const save = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api<{ token: string; expiresAt: string }>('/api/auth/reset', { body: { login, code, password, passwordConfirm: confirm } });
+      const me = await adopt(res.token, res.expiresAt);
+      router.dismissAll();
+      router.replace(homeFor(me));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not set your password. Please try again.');
+      setBusy(false);
+    }
+  };
 
-  // TODO: call the website's "resend code" API.
-  const resend = () => {
-    setCode('');
-    setSecondsLeft(CODE_SECONDS);
+  const resend = async () => {
+    setError('');
+    setNote('');
+    try {
+      await api('/api/auth/forgot', { body: { login } });
+      setCode('');
+      setSecondsLeft(CODE_SECONDS);
+      setNote('A new code is on its way. The old one no longer works.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'We couldn’t send a code. Please try again.');
+    }
   };
 
   return (
@@ -87,7 +111,7 @@ export default function ResetPassword() {
           Create a new password
         </T>
         <T size={14} color={colors.muted}>
-          Enter the 6-digit code we sent to {sentTo || 'your phone'}, then choose a new password.
+          If we found your account, we’ve emailed a 6-digit code to the address on it. Enter it below, then choose a new password.
         </T>
       </View>
 
@@ -130,15 +154,19 @@ export default function ResetPassword() {
 
       <View style={styles.rules}>
         <Rule ok={rules.length} label="At least 10 characters" />
-        <Rule ok={rules.capNum} label="One capital letter and one number" />
-        <Rule ok={rules.notOld} label="Not your old password" />
         <Rule ok={rules.match} label="Both passwords match" />
       </View>
 
       <View style={{ marginTop: 'auto', gap: 8, paddingTop: 16 }}>
-        <Button label="Save new password" variant={canSave ? 'primary' : 'disabled'} onPress={save} />
+        {note ? (
+          <T size={13} color={colors.green} style={{ textAlign: 'center' }}>
+            {note}
+          </T>
+        ) : null}
+        {error ? <ErrorBox text={error} /> : null}
+        <Button label={busy ? 'Saving…' : 'Save new password'} variant={canSave && !busy ? 'primary' : 'disabled'} onPress={save} />
         <T size={12} color={colors.muted} style={{ textAlign: 'center' }}>
-          For your security, you’ll be signed out on all other devices.
+          No email? Check your spam folder, or tap Resend.
         </T>
       </View>
     </Screen>

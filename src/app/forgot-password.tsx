@@ -1,6 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
+
+import { ErrorBox, OFFICE_WHATSAPP } from '@/components/applicant';
+import { api } from '@/lib/api';
 
 import { Field, Input, Segment, Select, TextLink } from '@/components/form';
 import { Icon } from '@/components/icon';
@@ -14,16 +17,25 @@ export default function ForgotPassword() {
   const [code, setCode] = useState('+44');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   const canSend = channel === 'phone' ? phone.replace(/\D/g, '').length >= 7 : /\S+@\S+\.\S+/.test(email);
 
-  // TODO: call the website's "send reset code" API.
-  const send = () => {
-    const sentTo =
-      channel === 'phone'
-        ? `${code} ${phone.trim().slice(0, 4)} ••• ${phone.replace(/\D/g, '').slice(-3)}`
-        : email.trim();
-    router.push({ pathname: '/reset-password', params: { sentTo } });
+  // The code always goes to the email on the account (there is no SMS service yet). The phone
+  // number is only used to find the account.
+  const send = async () => {
+    const login = channel === 'phone' ? `${code}${phone.replace(/\D/g, '')}` : email.trim();
+    setBusy(true);
+    setError('');
+    try {
+      await api('/api/auth/forgot', { body: { login } });
+      router.push({ pathname: '/reset-password', params: { login } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'We couldn’t send a code. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -44,16 +56,16 @@ export default function ForgotPassword() {
           Forgot your password?
         </T>
         <T size={14} color={colors.muted}>
-          No problem. Tell us how you joined and we’ll send you a 6-digit code to reset it.
+          No problem. Tell us how you joined and we’ll email a 6-digit code to the address on your account.
         </T>
       </View>
 
-      <Field label="Send my code by">
+      <Field label="Find my account by">
         <Segment
           value={channel}
           onChange={setChannel}
           options={[
-            { key: 'phone', label: 'WhatsApp / SMS' },
+            { key: 'phone', label: 'Phone number' },
             { key: 'email', label: 'Email' },
           ]}
         />
@@ -84,12 +96,13 @@ export default function ForgotPassword() {
       )}
 
       <View style={{ marginTop: 'auto', gap: 8, paddingTop: 24 }}>
-        <Button label="Send reset code" variant={canSend ? 'primary' : 'disabled'} onPress={send} />
+        {error ? <ErrorBox text={error} /> : null}
+        <Button label={busy ? 'Sending…' : 'Send reset code'} variant={canSend && !busy ? 'primary' : 'disabled'} onPress={send} />
         <View style={{ alignItems: 'center', paddingVertical: 8 }}>
           <TextLink label="Back to sign in" size={14} color={colors.ink} onPress={() => router.back()} />
         </View>
         <T size={12} color={colors.muted} style={{ textAlign: 'center' }}>
-          Can’t reach your phone or email? <TextLink label="Help on WhatsApp" size={12} color={colors.muted} />
+          Can’t reach your phone or email? <TextLink label="Help on WhatsApp" size={12} color={colors.muted} onPress={() => Linking.openURL(OFFICE_WHATSAPP)} />
         </T>
       </View>
     </Screen>
