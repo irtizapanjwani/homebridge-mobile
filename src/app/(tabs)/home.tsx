@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { CopyButton, HelpCard } from '@/components/applicant';
@@ -7,7 +7,7 @@ import { DashboardHeader } from '@/components/dashboard-header';
 import { ProxySheet } from '@/components/member-popups';
 import { PopupFrame, PopupScroll } from '@/components/sheet';
 import { Icon, type IconName } from '@/components/icon';
-import { Screen, T } from '@/components/ui';
+import { Button, Radio, Screen, T } from '@/components/ui';
 import { colors, fonts } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { useSession, type Me } from '@/lib/session';
@@ -539,13 +539,15 @@ function MeetingBody({ me, roomForClose }: { me: Me; roomForClose?: boolean }) {
   );
 }
 
-function MeetingCard({ me }: { me: Me }) {
-  const key = me.meeting ? `${me.meeting.date}|${me.reference}` : '';
-  const [open, setOpen] = useState(() => !!me.meeting && me.meeting.answer === null && popupDismissedFor !== key);
+function meetingPopupDue(me: Me) {
+  return !!me.meeting && me.meeting.answer === null && popupDismissedFor !== `${me.meeting.date}|${me.reference}`;
+}
+
+function MeetingCard({ me, popupOpen, onPopupClose }: { me: Me; popupOpen: boolean; onPopupClose: () => void }) {
   if (!me.meeting) return null;
   const close = () => {
-    popupDismissedFor = key;
-    setOpen(false);
+    popupDismissedFor = `${me.meeting!.date}|${me.reference}`;
+    onPopupClose();
   };
   return (
     <>
@@ -553,7 +555,7 @@ function MeetingCard({ me }: { me: Me }) {
         <MeetingBody me={me} />
       </Card>
       {/* Pops up when the dashboard opens until the member says whether they'll come. */}
-      <PopupFrame visible={open && me.meeting.answer === null} onClose={close} panelStyle={{ backgroundColor: colors.white }}>
+      <PopupFrame visible={popupOpen && me.meeting.answer === null} onClose={close} panelStyle={{ backgroundColor: colors.white }}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} style={styles.close} hitSlop={8}>
           <T size={20} color={colors.green}>
             ✕
@@ -564,6 +566,113 @@ function MeetingCard({ me }: { me: Me }) {
         </PopupScroll>
       </PopupFrame>
     </>
+  );
+}
+
+// ---------- Vote popup ----------
+
+type Motion = NonNullable<Me['motions']>[number];
+type Choice = 'For' | 'Against' | 'Abstain';
+
+/** Open votes the member hasn't acted on: not voted, and no proxy given. */
+function waitingVotes(me: Me): Motion[] {
+  return (me.motions ?? []).filter((m) => m.status === 'open' && !m.myVote && !m.proxyGivenTo);
+}
+
+/**
+ * Opens each time the member comes to Home while there is an open vote they haven't acted on.
+ * ✕, "Later" or a tap outside closes it until the next visit to Home. It stops once they vote or
+ * give their proxy, or when the vote closes.
+ */
+function VotePopup({ me, visible, onClose, onProxy }: { me: Me; visible: boolean; onClose: () => void; onProxy: (m: Motion) => void }) {
+  const { token, refreshMe } = useSession();
+  const [choice, setChoice] = useState<Choice | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const waiting = waitingVotes(me);
+  const m = waiting[0];
+  if (!m) return null;
+
+  const cast = async () => {
+    if (!choice) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api('/api/vote', { token, body: { motionId: m.id, choice } });
+      setChoice(null);
+      await refreshMe();
+      if (waiting.length <= 1) onClose(); // more waiting? the next one shows straight away
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Your vote could not be saved.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <PopupFrame visible={visible} onClose={onClose} panelStyle={{ backgroundColor: colors.white, paddingTop: 0 }}>
+      <View style={styles.goldLine} />
+      <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close} hitSlop={8}>
+        <T size={20} color={colors.green}>
+          ✕
+        </T>
+      </Pressable>
+      <PopupScroll gap={12}>
+        <View style={{ gap: 4, paddingRight: 40, paddingTop: 14 }}>
+          <T size={11} weight="semibold" color={colors.goldText} style={{ letterSpacing: 1 }}>
+            YOUR VOTE IS NEEDED{waiting.length > 1 ? ` · ${waiting.length} OPEN VOTES` : ''}
+          </T>
+          <T size={18} weight="semibold" style={{ lineHeight: 24 }}>
+            {m.title}
+          </T>
+        </View>
+        {m.details ? (
+          <T size={13} color={colors.inkSoft}>
+            {m.details}
+          </T>
+        ) : null}
+        <View style={{ gap: 8 }} accessibilityRole="radiogroup" accessibilityLabel="Your vote">
+          {(['For', 'Against', 'Abstain'] as Choice[]).map((c) => {
+            const on = c === choice;
+            const fg = on ? colors.white : colors.green;
+            return (
+              <Pressable
+                key={c}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on, disabled: busy }}
+                disabled={busy}
+                onPress={() => setChoice(c)}
+                style={[styles.voteOption, on ? { backgroundColor: colors.green, borderColor: colors.green } : { backgroundColor: colors.white, borderColor: colors.line }]}>
+                <Radio on={on} color={fg} />
+                <T size={15} weight="semibold" color={fg}>
+                  {c}
+                </T>
+              </Pressable>
+            );
+          })}
+        </View>
+        <T size={11} color={colors.muted}>
+          Your choice is private. A vote can’t be changed once cast.
+        </T>
+        <Button
+          label={busy ? 'Saving your vote…' : choice ? `Cast my vote: ${choice}` : 'Choose For, Against or Abstain'}
+          variant={choice && !busy ? 'gold' : 'disabled'}
+          height={50}
+          onPress={cast}
+        />
+        <Button label="Later" variant="outline" height={46} textSize={15} onPress={onClose} />
+        <Pressable accessibilityRole="button" onPress={() => onProxy(m)} hitSlop={6} style={{ alignSelf: 'center', minHeight: 40, justifyContent: 'center' }}>
+          <T size={13} weight="semibold" color={colors.green} style={{ textDecorationLine: 'underline' }}>
+            Can’t vote? Give your proxy to another member
+          </T>
+        </Pressable>
+        {error ? (
+          <T size={13} color="#9A3B26">
+            {error}
+          </T>
+        ) : null}
+      </PopupScroll>
+    </PopupFrame>
   );
 }
 
@@ -617,7 +726,27 @@ function GlanceCard({ me }: { me: Me }) {
 
 export default function Home() {
   const { me } = useSession();
+  // One popup at a time: an open vote they haven't acted on first, then the meeting.
+  const [popup, setPopup] = useState<'vote' | 'meeting' | null>(null);
+  const [proxyFor, setProxyFor] = useState<Motion | null>(null);
+
+  // Tabs stay mounted, so check again every time the member comes back to Home.
+  useFocusEffect(
+    useCallback(() => {
+      if (!me?.membership) return;
+      const t = setTimeout(() => setPopup(waitingVotes(me).length ? 'vote' : meetingPopupDue(me) ? 'meeting' : null), 400);
+      return () => {
+        clearTimeout(t);
+        setPopup(null);
+      };
+      // Only on focus: a vote cast inside the popup refreshes `me` without reopening anything.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [!!me?.membership]),
+  );
+
   if (!me || !me.membership) return null; // the tabs only open once a member's account has loaded
+
+  const afterVotePopup = () => setPopup(meetingPopupDue(me) ? 'meeting' : null);
 
   const links: { label: string; sub: string; icon: IconName; go: () => void }[] = [
     { label: 'My account', sub: 'Details, documents and joining fee', icon: 'profile', go: () => router.push('/account') },
@@ -637,7 +766,7 @@ export default function Home() {
       <FormsCard me={me} />
       <ContributionsCard me={me} />
       <VotesCard me={me} />
-      <MeetingCard me={me} />
+      <MeetingCard me={me} popupOpen={popup === 'meeting'} onPopupClose={() => setPopup(null)} />
       <IdeasCard me={me} />
       <GlanceCard me={me} />
 
@@ -661,6 +790,27 @@ export default function Home() {
       </Card>
 
       <HelpCard member />
+
+      <VotePopup
+        me={me}
+        visible={popup === 'vote'}
+        onClose={afterVotePopup}
+        onProxy={(m) => {
+          setPopup(null);
+          setProxyFor(m);
+        }}
+      />
+      {proxyFor ? (
+        <ProxySheet
+          visible
+          onClose={() => {
+            setProxyFor(null);
+            afterVotePopup();
+          }}
+          motionId={proxyFor.id}
+          motionTitle={proxyFor.title}
+        />
+      ) : null}
 
       <View style={styles.safety}>
         <Icon name="lock" size={16} color={colors.green} strokeWidth={1.8} />
@@ -724,6 +874,8 @@ const styles = StyleSheet.create({
   dateTop: { backgroundColor: colors.green, paddingVertical: 3, alignItems: 'center' },
   agenda: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cream, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
   agendaNum: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.green, alignItems: 'center', justifyContent: 'center' },
+  goldLine: { height: 4, marginHorizontal: -18, backgroundColor: colors.gold },
+  voteOption: { height: 50, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: 14, borderWidth: 2 },
   close: { position: 'absolute', top: 10, right: 10, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
   glanceBox: { flex: 1, backgroundColor: colors.mint, borderRadius: 12, padding: 10, gap: 2 },
   link: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
