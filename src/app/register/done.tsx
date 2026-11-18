@@ -1,36 +1,18 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { CheckBadge } from '@/components/icon';
-import { Field } from '@/components/form';
+import { CheckBadge, Icon } from '@/components/icon';
 import { MIN_MONTHLY, money, StepHeader, useRegister } from '@/components/register';
 import { Button, Screen, T } from '@/components/ui';
 import { homeFor, useSession } from '@/lib/session';
 import { colors } from '@/constants/theme';
 
-function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected: on }}
-      onPress={onPress}
-      style={[styles.chip, on && styles.chipOn]}>
-      <T size={14} weight="semibold" color={on ? colors.white : colors.ink}>
-        {label}
-      </T>
-    </Pressable>
-  );
-}
-
 export default function Done() {
-  const { draft, set } = useRegister();
+  const { draft } = useRegister();
   const { token, me } = useSession();
   const reference = draft.reference || me?.reference || '';
   const first = draft.name.trim().split(/\s+/)[0];
 
-  const amounts = draft.home ? [MIN_MONTHLY.ngn, 10_000, 20_000] : [MIN_MONTHLY.gbp, 50, 100];
-  const days = [1, 7, 15, 25];
-  const nth = (d: number) => (d === 1 ? '1st' : d === 7 ? '7th' : d === 15 ? '15th' : '25th');
 
   const timeline = [
     { title: 'Application received', sub: `Reference ${reference}`, done: true },
@@ -86,29 +68,23 @@ export default function Done() {
         ))}
       </View>
 
-      <View style={{ gap: 12 }}>
-        <View style={{ gap: 2 }}>
-          <T size={16} weight="semibold">
-            Set up your monthly contribution
-          </T>
+      {/* As on the website: the monthly minimum, for information. Nothing to choose or save here —
+          once approved, members pay by bank transfer from the Contribute tab. */}
+      <View style={styles.monthly}>
+        <View style={styles.monthlyIcon}>
+          <Icon name="contribute" size={20} strokeWidth={2} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
           <T size={12} color={colors.muted}>
-            Minimum {money(draft, MIN_MONTHLY.gbp, MIN_MONTHLY.ngn)} a month. Starts the month after you’re approved. You can change it later.
+            Monthly shares from
+          </T>
+          <T size={18} weight="bold" color={colors.green}>
+            {money(draft, MIN_MONTHLY.gbp, MIN_MONTHLY.ngn)} a month
+          </T>
+          <T size={12} color={colors.inkSoft}>
+            Starts the month after you’re approved. You pay by bank transfer from the Contribute tab, using your membership number as the reference.
           </T>
         </View>
-        <Field label="Amount each month">
-          <View style={styles.chips}>
-            {amounts.map((a) => (
-              <Chip key={a} label={money(draft, a, a)} on={draft.monthly === a} onPress={() => set({ monthly: a })} />
-            ))}
-          </View>
-        </Field>
-        <Field label="Day I’ll pay">
-          <View style={styles.chips}>
-            {days.map((d) => (
-              <Chip key={d} label={nth(d)} on={draft.payDay === d} onPress={() => set({ payDay: d })} />
-            ))}
-          </View>
-        </Field>
       </View>
 
       <View style={{ marginTop: 'auto', gap: 8 }}>
@@ -122,6 +98,8 @@ export default function Done() {
 }
 
 const styles = StyleSheet.create({
+  monthly: { flexDirection: 'row', gap: 12, backgroundColor: colors.cream, borderRadius: 16, padding: 14 },
+  monthlyIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   hero: { alignItems: 'center', gap: 8 },
   ref: {
     backgroundColor: colors.mint,
@@ -150,17 +128,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tlLine: { width: 2, flex: 1, backgroundColor: colors.lineSoft, marginTop: 4 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    minWidth: 72,
-    height: 44,
-    paddingHorizontal: 16,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.chipBorder,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipOn: { backgroundColor: colors.green, borderColor: colors.green },
 });

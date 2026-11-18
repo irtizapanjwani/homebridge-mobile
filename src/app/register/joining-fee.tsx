@@ -1,7 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { DateInput, Field, Input } from '@/components/form';
 import { Icon } from '@/components/icon';
@@ -46,6 +47,9 @@ function BankRow({ label, value, copy }: { label: string; value: string; copy?: 
   );
 }
 
+/** A random code to match a card payment to this application (not a secret, so Math.random is fine). */
+const matchCode = () => Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
 const STRIPE_PAYMENT_LINK = process.env.EXPO_PUBLIC_STRIPE_PAYMENT_LINK || 'https://buy.stripe.com/8x214nbjMdZg2gddNI8IU00';
 
 export default function JoiningFee() {
@@ -53,10 +57,40 @@ export default function JoiningFee() {
   const fee = money(draft, JOINING_FEE.gbp, JOINING_FEE.ngn);
   const ngnFee = `₦${JOINING_FEE.ngn.toLocaleString('en-GB')}`;
 
-  // Card: the same Stripe payment link as the website, then on to Check and send. Bank: the date
-  // and reference are sent with the application, and the office confirms the money.
+  const [paying, setPaying] = useState(false);
+  const [cardOpened, setCardOpened] = useState(false);
+
+  // Card: the same Stripe payment link as the website, but opened INSIDE the app (a secure Safari /
+  // Chrome sheet that slides up over this screen, with Apple Pay and Google Pay). When they close
+  // it they are back on this screen, not sent off to the browser. As on the website, the link
+  // carries a random code (client_reference_id) so the office can match the payment to them.
+  const payByCard = async () => {
+    const url = new URL(STRIPE_PAYMENT_LINK);
+    url.searchParams.set('client_reference_id', `vekatpay_${matchCode()}`);
+    const email = draft.email.trim();
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) url.searchParams.set('prefilled_email', email);
+    setPaying(true);
+    try {
+      await WebBrowser.openBrowserAsync(url.toString(), {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+        controlsColor: colors.green,
+        toolbarColor: colors.paper,
+        showTitle: true,
+        enableBarCollapsing: true,
+        dismissButtonStyle: 'done',
+      });
+    } catch {
+      // Opening failed (very rare). They can try again or pay by bank transfer.
+    } finally {
+      setPaying(false);
+      setCardOpened(true);
+    }
+  };
+
+  // Bank, or card once paid: the date and reference go with the application, and the office
+  // confirms the money.
   const next = () => {
-    if (draft.payMethod === 'card') Linking.openURL(STRIPE_PAYMENT_LINK).catch(() => {});
+    if (draft.payMethod === 'card' && !cardOpened) return void payByCard();
     router.push('/register/check');
   };
 
@@ -126,21 +160,62 @@ export default function JoiningFee() {
         </View>
       )}
 
-      {draft.payMethod === 'card' && (
+      {draft.payMethod === 'card' && !cardOpened && (
         <View style={styles.note}>
           <Icon name="lock" size={18} color={colors.green} strokeWidth={1.8} />
           <T size={12} style={{ flex: 1 }}>
-            You’ll pay on Stripe’s secure page. We never see your card details.
+            Stripe’s secure payment page opens right here in the app, with Apple Pay and Google Pay. We never see your card details.
           </T>
         </View>
       )}
 
+      {draft.payMethod === 'card' && cardOpened && (
+        <View style={{ gap: 12 }}>
+          <View style={styles.bankCard}>
+            <T size={14} weight="semibold">
+              Finished paying?
+            </T>
+            <T size={12} color={colors.muted}>
+              Add the date and the transaction ID from your Stripe receipt (it’s also in your email). Both are optional — the office checks every
+              payment anyway.
+            </T>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Field label="Date paid" flex>
+                <DateInput value={draft.datePaid} onChangeText={(v) => set({ datePaid: v })} />
+              </Field>
+              <Field label="Transaction ID" flex>
+                <Input value={draft.payReference} onChangeText={(v) => set({ payReference: v })} placeholder="From your receipt" autoCapitalize="characters" />
+              </Field>
+            </View>
+          </View>
+          <Pressable accessibilityRole="button" onPress={payByCard} hitSlop={6} style={{ alignSelf: 'center', minHeight: 40, justifyContent: 'center' }}>
+            <T size={13} weight="semibold" color={colors.green} style={{ textDecorationLine: 'underline' }}>
+              Open the payment page again
+            </T>
+          </Pressable>
+        </View>
+      )}
+
       <View style={{ marginTop: 'auto', gap: 8 }}>
-        <Button
-          label={draft.payMethod === 'card' ? `Pay ${fee} by card` : draft.payMethod === 'bank' ? 'I’ve paid — continue' : 'Choose how to pay'}
-          variant={draft.payMethod ? 'primary' : 'disabled'}
-          onPress={next}
-        />
+        {paying ? (
+          <View style={{ height: 54, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={colors.green} />
+          </View>
+        ) : (
+          <Button
+            label={
+              draft.payMethod === 'card'
+                ? cardOpened
+                  ? 'I’ve paid — continue'
+                  : `Pay ${fee} by card`
+                : draft.payMethod === 'bank'
+                  ? 'I’ve paid — continue'
+                  : 'Choose how to pay'
+            }
+            variant={draft.payMethod ? 'primary' : 'disabled'}
+            onPress={next}
+          />
+        )}
         <T size={12} color={colors.muted} style={{ textAlign: 'center' }}>
           You get a receipt by email once the office confirms your payment.
         </T>

@@ -107,8 +107,6 @@ export type Draft = {
   datePaid: string;
   payReference: string;
   // Step 4
-  monthly: number;
-  payDay: number;
   /** Set once the application is saved: HBA-YYMM-NNNN (or SUP-… for a supporter). */
   reference: string;
 };
@@ -148,8 +146,6 @@ const empty = (home: boolean): Draft => ({
   payMethod: '',
   datePaid: '',
   payReference: '',
-  monthly: home ? MIN_MONTHLY.ngn : MIN_MONTHLY.gbp,
-  payDay: 1,
   reference: '',
 });
 

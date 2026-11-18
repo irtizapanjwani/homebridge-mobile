@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { ErrorBox } from '@/components/applicant';
@@ -64,9 +64,27 @@ function Done({ title, text, onClose }: { title: string; text: string; onClose: 
 
 // ---------- I've paid — send proof ----------
 
-export function ProofOfPaymentSheet({ visible, onClose, currency }: { visible: boolean; onClose: () => void; currency: 'GBP' | 'NGN' }) {
-  const [cur, setCur] = useState<'GBP' | 'NGN'>(currency);
+type PayCurrency = 'GBP' | 'NGN' | 'USD';
+
+export function ProofOfPaymentSheet({
+  visible,
+  onClose,
+  currency,
+  amount: suggested,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  currency: PayCurrency;
+  amount?: number;
+}) {
+  const [cur, setCur] = useState<PayCurrency>(currency);
   const [amount, setAmount] = useState('');
+  // Opened from Contribute: start with the currency and amount they picked there.
+  useEffect(() => {
+    if (!visible) return;
+    setCur(currency);
+    if (suggested) setAmount(String(suggested));
+  }, [visible, currency, suggested]);
   const { token, refreshMe } = useSession();
   const [month, setMonth] = useState(monthsFrom(0, 1)[0].key);
   const [busy, setBusy] = useState(false);
@@ -127,14 +145,15 @@ export function ProofOfPaymentSheet({ visible, onClose, currency }: { visible: b
               value={cur}
               onChange={setCur}
               options={[
-                { key: 'GBP', label: '£ Pounds' },
                 { key: 'NGN', label: '₦ Naira' },
+                { key: 'USD', label: '$ Dollar' },
+                { key: 'GBP', label: '£ Pound' },
               ]}
             />
           </Field>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Field label="Amount" flex>
-              <Input value={amount} onChangeText={(v) => setAmount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" placeholder={cur === 'GBP' ? '25' : '5000'} />
+              <Input value={amount} onChangeText={(v) => setAmount(v.replace(/[^\d.]/g, ''))} keyboardType="decimal-pad" placeholder={cur === 'NGN' ? '5000' : cur === 'USD' ? '30' : '25'} />
             </Field>
             <Field label="Date paid" flex>
               <DateInput value={date} onChangeText={setDate} />

@@ -1,14 +1,15 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { CopyButton, HelpCard } from '@/components/applicant';
+import { IdeasCard } from '@/components/ideas-card';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { ProxySheet } from '@/components/member-popups';
 import { PopupFrame, PopupScroll } from '@/components/sheet';
 import { Icon, type IconName } from '@/components/icon';
 import { Button, Radio, Screen, T } from '@/components/ui';
-import { colors, fonts } from '@/constants/theme';
+import { colors } from '@/constants/theme';
 import { api } from '@/lib/api';
 import { useSession, type Me } from '@/lib/session';
 
@@ -349,77 +350,6 @@ function VotesCard({ me }: { me: Me }) {
 }
 
 // ---------- Ideas ----------
-
-function IdeasCard({ me }: { me: Me }) {
-  const { token, refreshMe } = useSession();
-  const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  if (!me.ideas) return null;
-
-  const send = async () => {
-    setBusy(true);
-    setMsg(null);
-    try {
-      await api('/api/ideas', { token, body: { text } });
-      setText('');
-      setMsg({ ok: true, text: 'Thank you — your idea has been sent to the board.' });
-      await refreshMe();
-    } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : 'Your idea could not be sent.' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Card style={{ gap: 10 }}>
-      <CardTitle>Share an idea</CardTitle>
-      <T size={13} color={colors.inkSoft}>
-        A project, an improvement, a question for the board. Every idea is read.
-      </T>
-      <TextInput
-        value={text}
-        onChangeText={(v) => setText(v.slice(0, 2000))}
-        multiline
-        placeholder="Your idea"
-        placeholderTextColor={colors.muted}
-        style={styles.ideaInput}
-        accessibilityLabel="Your idea"
-      />
-      {busy ? (
-        <ActivityIndicator color={colors.green} style={{ height: 44 }} />
-      ) : (
-        <SmallButton label="Send idea" primary disabled={text.trim().length < 5} onPress={send} />
-      )}
-      {msg ? (
-        <T size={13} color={msg.ok ? colors.green : '#9A3B26'}>
-          {msg.text}
-        </T>
-      ) : null}
-      {me.ideas.length ? (
-        <View style={{ gap: 8, paddingTop: 4 }}>
-          <T size={13} weight="semibold">
-            Your ideas
-          </T>
-          {me.ideas.map((i) => (
-            <View key={i.id} style={styles.idea}>
-              <T size={13}>{i.text}</T>
-              <T size={12} color={colors.muted}>
-                {i.at} · {i.status}
-              </T>
-              {i.reply ? (
-                <T size={12} color={colors.green}>
-                  Reply: {i.reply}
-                </T>
-              ) : null}
-            </View>
-          ))}
-        </View>
-      ) : null}
-    </Card>
-  );
-}
 
 // ---------- Meeting (+ popup) ----------
 
@@ -857,19 +787,6 @@ const styles = StyleSheet.create({
   receiptIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.mint, alignItems: 'center', justifyContent: 'center' },
   motion: { borderWidth: 1, borderColor: colors.line, borderRadius: 14, padding: 12, gap: 8 },
   tag: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  ideaInput: {
-    minHeight: 90,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: 12,
-    padding: 12,
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.ink,
-    textAlignVertical: 'top',
-    backgroundColor: colors.white,
-  },
-  idea: { backgroundColor: colors.paper, borderRadius: 10, padding: 10, gap: 2 },
   dateTile: { width: 58, borderRadius: 14, borderWidth: 1, borderColor: colors.line, overflow: 'hidden', backgroundColor: colors.white },
   dateTop: { backgroundColor: colors.green, paddingVertical: 3, alignItems: 'center' },
   agenda: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.cream, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
